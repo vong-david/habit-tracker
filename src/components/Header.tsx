@@ -14,11 +14,16 @@ import {
   Moon,
 } from "lucide-react";
 import { getKhmerMonthYear } from "@/lib/dateUtils";
+import { UserProfile } from "@/types/auth";
+import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 
 interface HeaderProps {
   currentDate: Date;
   theme: "dark" | "light";
   onToggleTheme: () => void;
+  user: UserProfile | null;
+  onLogin: (user: UserProfile) => void;
+  onLogout: () => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onGoToToday: () => void;
@@ -35,6 +40,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentDate,
   theme,
   onToggleTheme,
+  user,
+  onLogin,
+  onLogout,
   onPrevMonth,
   onNextMonth,
   onGoToToday,
@@ -53,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-white dark:bg-[#12141c] border-b border-gray-200 dark:border-gray-800/80 px-3 sm:px-6 py-3.5 shadow-sm transition-colors sticky top-0 z-30 backdrop-blur-md bg-white/95 dark:bg-[#12141c]/95">
       <div className="max-w-[1700px] mx-auto flex flex-col gap-3.5">
         
-        {/* Top Bar: Brand, Theme Toggle, Month Navigator */}
+        {/* Top Bar: Brand, Month Navigator, Auth, Theme */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           {/* Brand */}
           <div className="flex items-center gap-2.5">
@@ -104,24 +112,29 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Theme Switcher Button */}
-          <button
-            onClick={onToggleTheme}
-            title={theme === "dark" ? "ប្តូរទៅ Light Mode" : "ប្តូរទៅ Dark Mode"}
-            className="p-2 bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm"
-          >
-            {theme === "dark" ? (
-              <>
-                <Sun className="w-4 h-4 text-amber-400" />
-                <span className="hidden sm:inline text-xs font-medium">ពន្លឺ</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-4 h-4 text-indigo-500" />
-                <span className="hidden sm:inline text-xs font-medium">ងងឹត</span>
-              </>
-            )}
-          </button>
+          {/* Right Section: Google Sign-in & Theme Switcher */}
+          <div className="flex items-center gap-2">
+            <GoogleAuthButton user={user} onLogin={onLogin} onLogout={onLogout} />
+
+            {/* Theme Switcher Button */}
+            <button
+              onClick={onToggleTheme}
+              title={theme === "dark" ? "ប្តូរទៅ Light Mode" : "ប្តូរទៅ Dark Mode"}
+              className="p-2 bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              {theme === "dark" ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  <span className="hidden sm:inline text-xs font-medium">ពន្លឺ</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-indigo-500" />
+                  <span className="hidden sm:inline text-xs font-medium">ងងឹត</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Lower Row: Stats & Action Buttons (Mobile Optimized) */}

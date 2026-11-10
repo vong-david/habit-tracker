@@ -13,16 +13,22 @@ export const DEFAULT_HABITS: Habit[] = [
   { id: "10", name: "ចូលគេងមុនម៉ោង 10:30 យប់", icon: "🌙", category: "ពេលយប់", createdAt: new Date().toISOString() },
 ];
 
-const HABITS_STORAGE_KEY = "habit_tracker_habits_km_v2";
-const COMPLETIONS_STORAGE_KEY = "habit_tracker_completions_km_v2";
-const WELLNESS_STORAGE_KEY = "habit_tracker_wellness_km_v2";
+function getScopedKey(baseKey: string, userId?: string): string {
+  const safeId = userId ? userId.replace(/[^a-zA-Z0-9_-]/g, "_") : "guest";
+  return `${baseKey}_user_${safeId}`;
+}
 
-export function loadHabits(): Habit[] {
+const BASE_HABITS_KEY = "habit_tracker_habits_v3";
+const BASE_COMPLETIONS_KEY = "habit_tracker_completions_v3";
+const BASE_WELLNESS_KEY = "habit_tracker_wellness_v3";
+
+export function loadHabits(userId?: string): Habit[] {
   if (typeof window === "undefined") return DEFAULT_HABITS;
+  const key = getScopedKey(BASE_HABITS_KEY, userId);
   try {
-    const raw = localStorage.getItem(HABITS_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      saveHabits(DEFAULT_HABITS);
+      saveHabits(DEFAULT_HABITS, userId);
       return DEFAULT_HABITS;
     }
     return JSON.parse(raw);
@@ -32,19 +38,21 @@ export function loadHabits(): Habit[] {
   }
 }
 
-export function saveHabits(habits: Habit[]): void {
+export function saveHabits(habits: Habit[], userId?: string): void {
   if (typeof window === "undefined") return;
+  const key = getScopedKey(BASE_HABITS_KEY, userId);
   try {
-    localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habits));
+    localStorage.setItem(key, JSON.stringify(habits));
   } catch (e) {
     console.error("Failed to save habits to localStorage", e);
   }
 }
 
-export function loadCompletions(): HabitCompletionMap {
+export function loadCompletions(userId?: string): HabitCompletionMap {
   if (typeof window === "undefined") return {};
+  const key = getScopedKey(BASE_COMPLETIONS_KEY, userId);
   try {
-    const raw = localStorage.getItem(COMPLETIONS_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) {
       const sampleCompletions: HabitCompletionMap = {};
       const now = new Date();
@@ -60,7 +68,7 @@ export function loadCompletions(): HabitCompletionMap {
           sampleCompletions[`${h.id}_${dateStr}`] = isDone;
         }
       });
-      saveCompletions(sampleCompletions);
+      saveCompletions(sampleCompletions, userId);
       return sampleCompletions;
     }
     return JSON.parse(raw);
@@ -70,19 +78,21 @@ export function loadCompletions(): HabitCompletionMap {
   }
 }
 
-export function saveCompletions(completions: HabitCompletionMap): void {
+export function saveCompletions(completions: HabitCompletionMap, userId?: string): void {
   if (typeof window === "undefined") return;
+  const key = getScopedKey(BASE_COMPLETIONS_KEY, userId);
   try {
-    localStorage.setItem(COMPLETIONS_STORAGE_KEY, JSON.stringify(completions));
+    localStorage.setItem(key, JSON.stringify(completions));
   } catch (e) {
     console.error("Failed to save completions to localStorage", e);
   }
 }
 
-export function loadWellness(): WellnessMap {
+export function loadWellness(userId?: string): WellnessMap {
   if (typeof window === "undefined") return {};
+  const key = getScopedKey(BASE_WELLNESS_KEY, userId);
   try {
-    const raw = localStorage.getItem(WELLNESS_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) {
       const sampleWellness: WellnessMap = {};
       const now = new Date();
@@ -96,7 +106,7 @@ export function loadWellness(): WellnessMap {
           sleepHours: 7.5,
         };
       }
-      saveWellness(sampleWellness);
+      saveWellness(sampleWellness, userId);
       return sampleWellness;
     }
     return JSON.parse(raw);
@@ -106,10 +116,11 @@ export function loadWellness(): WellnessMap {
   }
 }
 
-export function saveWellness(wellness: WellnessMap): void {
+export function saveWellness(wellness: WellnessMap, userId?: string): void {
   if (typeof window === "undefined") return;
+  const key = getScopedKey(BASE_WELLNESS_KEY, userId);
   try {
-    localStorage.setItem(WELLNESS_STORAGE_KEY, JSON.stringify(wellness));
+    localStorage.setItem(key, JSON.stringify(wellness));
   } catch (e) {
     console.error("Failed to save wellness to localStorage", e);
   }

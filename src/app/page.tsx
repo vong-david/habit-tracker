@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Habit, HabitCompletionMap, WellnessMap } from "@/types/habit";
+import { UserProfile } from "@/types/auth";
+import { getStoredUser, saveUserSession } from "@/lib/auth";
 import {
   DEFAULT_HABITS,
   loadHabits,
@@ -31,18 +33,23 @@ function toKhmerNum(num: number): string {
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [habits, setHabits] = useState<Habit[]>(DEFAULT_HABITS);
   const [completions, setCompletions] = useState<HabitCompletionMap>({});
   const [wellness, setWellness] = useState<WellnessMap>({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Initialize from LocalStorage on mount
+  // Initialize on mount
   useEffect(() => {
     setIsClient(true);
-    setHabits(loadHabits());
-    setCompletions(loadCompletions());
-    setWellness(loadWellness());
+    const storedUser = getStoredUser();
+    setUser(storedUser);
+
+    const userId = storedUser?.id;
+    setHabits(loadHabits(userId));
+    setCompletions(loadCompletions(userId));
+    setWellness(loadWellness(userId));
 
     const savedTheme = localStorage.getItem("habit_tracker_theme") as "dark" | "light" | null;
     const initialTheme = savedTheme || "dark";
@@ -54,21 +61,41 @@ export default function Home() {
     }
   }, []);
 
-  // Sync to LocalStorage whenever state changes
+  // Sync to user-scoped LocalStorage whenever state changes
   useEffect(() => {
     if (!isClient) return;
-    saveHabits(habits);
-  }, [habits, isClient]);
+    saveHabits(habits, user?.id);
+  }, [habits, user?.id, isClient]);
 
   useEffect(() => {
     if (!isClient) return;
-    saveCompletions(completions);
-  }, [completions, isClient]);
+    saveCompletions(completions, user?.id);
+  }, [completions, user?.id, isClient]);
 
   useEffect(() => {
     if (!isClient) return;
-    saveWellness(wellness);
-  }, [wellness, isClient]);
+    saveWellness(wellness, user?.id);
+  }, [wellness, user?.id, isClient]);
+
+  // Handle Login
+  const handleLogin = (newUser: UserProfile) => {
+    setUser(newUser);
+    saveUserSession(newUser);
+    // Switch to new user's personal LocalStorage workspace
+    setHabits(loadHabits(newUser.id));
+    setCompletions(loadCompletions(newUser.id));
+    setWellness(loadWellness(newUser.id));
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    setUser(null);
+    saveUserSession(null);
+    // Switch back to guest LocalStorage workspace
+    setHabits(loadHabits(undefined));
+    setCompletions(loadCompletions(undefined));
+    setWellness(loadWellness(undefined));
+  };
 
   // Theme switcher handler
   const handleToggleTheme = () => {
@@ -143,16 +170,19 @@ export default function Home() {
   // Reset to default habits
   const handleResetData = () => {
     if (confirm("តើអ្នកពិតជាចង់កំណត់ទិន្នន័យទម្លាប់ និងការតាមដានឡើងវិញទៅលំនាំដើមមែនទេ?")) {
-      localStorage.clear();
+      saveHabits(DEFAULT_HABITS, user?.id);
+      saveCompletions({}, user?.id);
+      saveWellness({}, user?.id);
       setHabits(DEFAULT_HABITS);
-      setCompletions(loadCompletions());
-      setWellness(loadWellness());
+      setCompletions({});
+      setWellness({});
     }
   };
 
   // Export JSON
   const handleExportData = () => {
     const backup = {
+      user: user ? { email: user.email, name: user.name } : null,
       habits,
       completions,
       wellness,
@@ -162,7 +192,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `habit-tracker-backup-${year}-${month + 1}.json`;
+    link.download = `habit-tracker-backup-${user?.email || "guest"}-${year}-${month + 1}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -271,11 +301,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#090a0f] text-gray-900 dark:text-gray-100 flex flex-col pb-12 transition-colors duration-200">
-      {/* 1. Header Bar with Theme Switcher */}
+      {/* 1. Header Bar with Auth and Theme */}
       <Header
         currentDate={currentDate}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        user={user}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
         onGoToToday={handleGoToToday}
