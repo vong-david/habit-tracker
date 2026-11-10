@@ -15,7 +15,7 @@ import { DayInfo } from "@/types/habit";
 
 interface DailyProgressData {
   dayInfo: DayInfo;
-  dayLabel: string; // e.g. "We 1" or "We\n1"
+  dayLabel: string;
   dayOfWeek: string;
   dayNumber: number;
   percentage: number;
@@ -25,17 +25,23 @@ interface DailyProgressData {
 
 interface DailyProgressBarChartProps {
   data: DailyProgressData[];
+  theme?: "dark" | "light";
 }
 
-export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ data }) => {
+export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
+  data,
+  theme = "dark",
+}) => {
+  const isDark = theme === "dark";
+
   return (
-    <div className="bg-[#12141c] border border-gray-800 rounded-xl overflow-hidden shadow-lg">
+    <div className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm dark:shadow-lg transition-colors">
       {/* Header bar matching the screenshot */}
-      <div className="bg-[#181a24] border-b border-gray-800 px-4 py-2 flex items-center justify-between">
-        <h2 className="text-sm font-bold tracking-wider uppercase text-gray-200">
+      <div className="bg-gray-50 dark:bg-[#181a24] border-b border-gray-200 dark:border-gray-800 px-4 py-2 flex items-center justify-between">
+        <h2 className="text-sm font-bold tracking-wider uppercase text-gray-800 dark:text-gray-200">
           Daily Progress
         </h2>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
           0% - 100% completion
         </span>
       </div>
@@ -49,21 +55,21 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#222634"
+              stroke={isDark ? "#222634" : "#f1f5f9"}
             />
             <YAxis
               domain={[0, 100]}
               ticks={[0, 25, 50, 75, 100]}
               tickFormatter={(v) => `${v}%`}
-              tick={{ fill: "#9ca3af", fontSize: 10 }}
-              axisLine={{ stroke: "#2a2f3f" }}
+              tick={{ fill: isDark ? "#9ca3af" : "#64748b", fontSize: 10 }}
+              axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
               tickLine={false}
             />
             <XAxis
               dataKey="dayNumber"
               interval={0}
               tickLine={false}
-              axisLine={{ stroke: "#2a2f3f" }}
+              axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
               tick={({ x, y, payload }) => {
                 const item = data.find((d) => d.dayNumber === payload.value);
                 const isToday = item?.dayInfo.isToday;
@@ -74,7 +80,7 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
                       y={8}
                       dy={4}
                       textAnchor="middle"
-                      fill={isToday ? "#10b981" : "#9ca3af"}
+                      fill={isToday ? "#10b981" : isDark ? "#9ca3af" : "#64748b"}
                       fontSize={9}
                       fontWeight={isToday ? "bold" : "normal"}
                     >
@@ -85,7 +91,7 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
                       y={18}
                       dy={4}
                       textAnchor="middle"
-                      fill={isToday ? "#10b981" : "#d1d5db"}
+                      fill={isToday ? "#10b981" : isDark ? "#d1d5db" : "#334155"}
                       fontSize={9}
                       fontWeight={isToday ? "bold" : "500"}
                     >
@@ -97,18 +103,18 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
               height={32}
             />
             <Tooltip
-              cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
+              cursor={{ fill: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)" }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const d = payload[0].payload as DailyProgressData;
                   return (
-                    <div className="bg-[#1a1d28] border border-gray-700 p-2.5 rounded-lg shadow-xl text-xs">
-                      <div className="font-semibold text-white flex items-center justify-between gap-4">
+                    <div className="bg-white dark:bg-[#1a1d28] border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg shadow-xl text-xs text-gray-900 dark:text-white">
+                      <div className="font-semibold flex items-center justify-between gap-4">
                         <span>{d.dayOfWeek}, Day {d.dayNumber}</span>
-                        <span className="text-emerald-400 font-bold">{d.percentage}%</span>
+                        <span className="text-emerald-500 font-bold">{d.percentage}%</span>
                       </div>
-                      <div className="text-gray-400 mt-1">
-                        Completed: <span className="text-white font-medium">{d.completed}</span> / {d.total} habits
+                      <div className="text-gray-500 dark:text-gray-400 mt-1">
+                        Completed: <span className="text-gray-900 dark:text-white font-medium">{d.completed}</span> / {d.total} habits
                       </div>
                     </div>
                   );
@@ -123,11 +129,9 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
             >
               {data.map((entry, index) => {
                 const isToday = entry.dayInfo.isToday;
-                let fillColor = "#ffffff"; // default bright contrast like image
-                if (isToday) fillColor = "#10b981"; // Emerald accent for today
-                else if (entry.percentage === 100) fillColor = "#e2e8f0";
-                else if (entry.percentage === 0) fillColor = "#2a2f3f";
-                else fillColor = "#cbd5e1";
+                let fillColor = isDark ? "#ffffff" : "#0f172a";
+                if (isToday) fillColor = "#10b981";
+                else if (entry.percentage === 0) fillColor = isDark ? "#2a2f3f" : "#e2e8f0";
 
                 return <Cell key={`cell-${index}`} fill={fillColor} />;
               })}
@@ -138,4 +142,3 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
     </div>
   );
 };
-

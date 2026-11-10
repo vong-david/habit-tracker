@@ -21,6 +21,7 @@ import { AddHabitModal } from "@/components/AddHabitModal";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [habits, setHabits] = useState<Habit[]>(DEFAULT_HABITS);
   const [completions, setCompletions] = useState<HabitCompletionMap>({});
@@ -33,6 +34,16 @@ export default function Home() {
     setHabits(loadHabits());
     setCompletions(loadCompletions());
     setWellness(loadWellness());
+
+    // Load persisted theme or check system preference
+    const savedTheme = localStorage.getItem("habit_tracker_theme") as "dark" | "light" | null;
+    const initialTheme = savedTheme || "dark";
+    setTheme(initialTheme);
+    if (initialTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   }, []);
 
   // Sync to LocalStorage whenever state changes
@@ -50,6 +61,18 @@ export default function Home() {
     if (!isClient) return;
     saveWellness(wellness);
   }, [wellness, isClient]);
+
+  // Theme switcher handler
+  const handleToggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("habit_tracker_theme", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   // Days in current selected month
   const year = currentDate.getFullYear();
@@ -232,17 +255,19 @@ export default function Home() {
 
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-[#0b0c10] flex items-center justify-center text-gray-400">
+      <div className="min-h-screen bg-[#090a0f] flex items-center justify-center text-gray-400">
         Loading Habit Tracker...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#090a0f] text-gray-100 flex flex-col pb-12">
-      {/* 1. Header Bar */}
+    <div className="min-h-screen bg-gray-50 dark:bg-[#090a0f] text-gray-900 dark:text-gray-100 flex flex-col pb-12 transition-colors duration-200">
+      {/* 1. Header Bar with Theme Switcher */}
       <Header
         currentDate={currentDate}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
         onGoToToday={handleGoToToday}
@@ -256,13 +281,13 @@ export default function Home() {
       />
 
       <main className="max-w-[1700px] w-full mx-auto px-4 sm:px-6 pt-6 flex-1 space-y-6">
-        {/* 2. Top Charts Section (Matching the image layout) */}
+        {/* 2. Top Charts Section (Matching screenshot layout) */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-3">
-            <DailyProgressBarChart data={dailyChartData} />
+            <DailyProgressBarChart data={dailyChartData} theme={theme} />
           </div>
           <div className="lg:col-span-1">
-            <WeeklyProgressBarChart data={weeklyChartData} />
+            <WeeklyProgressBarChart data={weeklyChartData} theme={theme} />
           </div>
         </div>
 
@@ -293,4 +318,3 @@ export default function Home() {
     </div>
   );
 }
-
