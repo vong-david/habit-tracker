@@ -20,6 +20,7 @@ import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
 import { HabitGrid } from "@/components/HabitGrid";
 import { WellnessTracker } from "@/components/WellnessTracker";
 import { AddHabitModal } from "@/components/AddHabitModal";
+import { EditHabitModal } from "@/components/EditHabitModal";
 
 const KHMER_NUMBERS = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
 function toKhmerNum(num: number): string {
@@ -39,6 +40,7 @@ export default function Home() {
   const [completions, setCompletions] = useState<HabitCompletionMap>({});
   const [wellness, setWellness] = useState<WellnessMap>({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
   // Initialize on mount
   useEffect(() => {
@@ -81,7 +83,6 @@ export default function Home() {
   const handleLogin = (newUser: UserProfile) => {
     setUser(newUser);
     saveUserSession(newUser);
-    // Switch to new user's personal LocalStorage workspace
     setHabits(loadHabits(newUser.id));
     setCompletions(loadCompletions(newUser.id));
     setWellness(loadWellness(newUser.id));
@@ -91,7 +92,6 @@ export default function Home() {
   const handleLogout = () => {
     setUser(null);
     saveUserSession(null);
-    // Switch back to guest LocalStorage workspace
     setHabits(loadHabits(undefined));
     setCompletions(loadCompletions(undefined));
     setWellness(loadWellness(undefined));
@@ -150,10 +150,54 @@ export default function Home() {
     setHabits((prev) => [...prev, created]);
   };
 
+  // Edit / Update habit
+  const handleUpdateHabit = (updated: Habit) => {
+    setHabits((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+  };
+
   // Delete habit
   const handleDeleteHabit = (habitId: string) => {
     if (!confirm("តើអ្នកប្រាកដជាចង់លុបទម្លាប់នេះមែនទេ?")) return;
     setHabits((prev) => prev.filter((h) => h.id !== habitId));
+    // Clean up associated completion keys
+    setCompletions((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (key.startsWith(`${habitId}_`)) {
+          delete next[key];
+        }
+      });
+      return next;
+    });
+  };
+
+  // Move habit up or down
+  const handleMoveHabit = (habitId: string, direction: "up" | "down") => {
+    setHabits((prev) => {
+      const index = prev.findIndex((h) => h.id === habitId);
+      if (index === -1) return prev;
+      if (direction === "up" && index === 0) return prev;
+      if (direction === "down" && index === prev.length - 1) return prev;
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+  };
+
+  // Clear checks for a habit in current month
+  const handleClearHabitMonthLogs = (habitId: string) => {
+    setCompletions((prev) => {
+      const next = { ...prev };
+      days.forEach((day) => {
+        const key = `${habitId}_${day.dateString}`;
+        delete next[key];
+      });
+      return next;
+    });
   };
 
   // Update wellness metric
@@ -340,6 +384,8 @@ export default function Home() {
           completions={completions}
           onToggleHabit={handleToggleHabit}
           onDeleteHabit={handleDeleteHabit}
+          onEditHabit={(habit) => setEditingHabit(habit)}
+          onMoveHabit={handleMoveHabit}
         />
 
         {/* 4. Bottom Overall Wellness Row */}
@@ -355,6 +401,16 @@ export default function Home() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddHabit={handleAddHabit}
+      />
+
+      {/* Edit Habit Modal */}
+      <EditHabitModal
+        habit={editingHabit}
+        isOpen={!!editingHabit}
+        onClose={() => setEditingHabit(null)}
+        onUpdateHabit={handleUpdateHabit}
+        onDeleteHabit={handleDeleteHabit}
+        onClearHabitMonthLogs={handleClearHabitMonthLogs}
       />
     </div>
   );

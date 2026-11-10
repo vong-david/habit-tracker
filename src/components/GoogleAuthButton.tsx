@@ -330,3 +330,4 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     </div>
   );
 };
+
