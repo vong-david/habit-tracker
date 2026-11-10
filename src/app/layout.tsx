@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { Kantumruy_Pro } from "next/font/google";
 import "./globals.css";
 
+const kantumruy = Kantumruy_Pro({
+  subsets: ["khmer", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-kantumruy",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Habit Tracker & Wellness Dashboard",
-  description: "A sleek spreadsheet-style habit tracker and wellness dashboard ready to host on Vercel.",
+  title: "Habit Tracker - កម្មវិធីតាមដានទម្លាប់ និងសុខភាព",
+  description: "កម្មវិធីតាមដានទម្លាប់ប្រចាំថ្ងៃ និងសុខភាពទូទៅ បែប Spreadsheet ទំនើប ងាយស្រួលប្រើលើទូរស័ព្ទ និងកុំព្យូទ័រ។",
 };
 
 export default function RootLayout({
@@ -12,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen antialiased selection:bg-emerald-500 selection:text-white">
+    <html lang="km" className="dark">
+      <body className={`${kantumruy.className} min-h-screen antialiased selection:bg-emerald-500 selection:text-white`}>
         {children}
       </body>
     </html>

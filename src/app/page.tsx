@@ -19,6 +19,15 @@ import { HabitGrid } from "@/components/HabitGrid";
 import { WellnessTracker } from "@/components/WellnessTracker";
 import { AddHabitModal } from "@/components/AddHabitModal";
 
+const KHMER_NUMBERS = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
+function toKhmerNum(num: number): string {
+  return num
+    .toString()
+    .split("")
+    .map((d) => KHMER_NUMBERS[parseInt(d, 10)] || d)
+    .join("");
+}
+
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -35,7 +44,6 @@ export default function Home() {
     setCompletions(loadCompletions());
     setWellness(loadWellness());
 
-    // Load persisted theme or check system preference
     const savedTheme = localStorage.getItem("habit_tracker_theme") as "dark" | "light" | null;
     const initialTheme = savedTheme || "dark";
     setTheme(initialTheme);
@@ -117,7 +125,7 @@ export default function Home() {
 
   // Delete habit
   const handleDeleteHabit = (habitId: string) => {
-    if (!confirm("Are you sure you want to remove this habit?")) return;
+    if (!confirm("តើអ្នកប្រាកដជាចង់លុបទម្លាប់នេះមែនទេ?")) return;
     setHabits((prev) => prev.filter((h) => h.id !== habitId));
   };
 
@@ -134,7 +142,7 @@ export default function Home() {
 
   // Reset to default habits
   const handleResetData = () => {
-    if (confirm("Reset to default habits and sample tracking data?")) {
+    if (confirm("តើអ្នកពិតជាចង់កំណត់ទិន្នន័យទម្លាប់ និងការតាមដានឡើងវិញទៅលំនាំដើមមែនទេ?")) {
       localStorage.clear();
       setHabits(DEFAULT_HABITS);
       setCompletions(loadCompletions());
@@ -172,13 +180,13 @@ export default function Home() {
           setHabits(parsed.habits);
           if (parsed.completions) setCompletions(parsed.completions);
           if (parsed.wellness) setWellness(parsed.wellness);
-          alert("Data imported successfully!");
+          alert("ទិន្នន័យត្រូវបាននាំចូល (Import) ដោយជោគជ័យ!");
         } else {
-          alert("Invalid backup file format.");
+          alert("ឯកសារ Backup មិនត្រឹមត្រូវទេ។");
         }
       } catch (err) {
         console.error(err);
-        alert("Failed to parse the uploaded file.");
+        alert("មិនអាចអានឯកសារដែលបានជ្រើសរើសបានទេ។");
       }
     };
     reader.readAsText(file);
@@ -222,7 +230,7 @@ export default function Home() {
       const percentage = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : 0;
 
       return {
-        weekLabel: `week ${week.weekNumber}`,
+        weekLabel: `សប្តាហ៍ ${toKhmerNum(week.weekNumber)}`,
         weekNumber: week.weekNumber,
         percentage,
         completed: totalDone,
@@ -255,8 +263,8 @@ export default function Home() {
 
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-[#090a0f] flex items-center justify-center text-gray-400">
-        Loading Habit Tracker...
+      <div className="min-h-screen bg-gray-50 dark:bg-[#090a0f] flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm">
+        កំពុងដំណើរការកម្មវិធីតាមដានទម្លាប់...
       </div>
     );
   }
@@ -280,9 +288,9 @@ export default function Home() {
         monthAveragePercentage={monthAveragePercentage}
       />
 
-      <main className="max-w-[1700px] w-full mx-auto px-4 sm:px-6 pt-6 flex-1 space-y-6">
-        {/* 2. Top Charts Section (Matching screenshot layout) */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <main className="max-w-[1700px] w-full mx-auto px-2 sm:px-6 pt-4 sm:pt-6 flex-1 space-y-4 sm:space-y-6">
+        {/* 2. Top Charts Section (Stacked on mobile, 3:1 on desktop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="lg:col-span-3">
             <DailyProgressBarChart data={dailyChartData} theme={theme} />
           </div>
@@ -291,7 +299,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 3. Middle Habit Grid Table */}
+        {/* 3. Middle Habit Grid Table (Mobile Responsive with horizontal scroll) */}
         <HabitGrid
           habits={habits}
           days={days}

@@ -1,21 +1,21 @@
 import { Habit, HabitCompletionMap, WellnessMap } from "@/types/habit";
 
 export const DEFAULT_HABITS: Habit[] = [
-  { id: "1", name: "Wake up at 6:00 AM", icon: "⏰", category: "Morning", createdAt: new Date().toISOString() },
-  { id: "2", name: "Morning Meditation (10m)", icon: "🧘", category: "Mindfulness", createdAt: new Date().toISOString() },
-  { id: "3", name: "Read 20 Pages", icon: "📖", category: "Growth", createdAt: new Date().toISOString() },
-  { id: "4", name: "Workout / Gym (45m)", icon: "🏋️", category: "Fitness", createdAt: new Date().toISOString() },
-  { id: "5", name: "Drink 2.5L Water", icon: "💧", category: "Health", createdAt: new Date().toISOString() },
-  { id: "6", name: "No Sugar / Detox Diet", icon: "🥗", category: "Health", createdAt: new Date().toISOString() },
-  { id: "7", name: "Deep Work / Code (2h)", icon: "💻", category: "Productivity", createdAt: new Date().toISOString() },
-  { id: "8", name: "Learn New Skills", icon: "🚀", category: "Growth", createdAt: new Date().toISOString() },
-  { id: "9", name: "Clean Workspace", icon: "✨", category: "Organization", createdAt: new Date().toISOString() },
-  { id: "10", name: "Sleep by 10:30 PM", icon: "🌙", category: "Night", createdAt: new Date().toISOString() },
+  { id: "1", name: "ក្រោកពីគេងម៉ោង 6:00 ព្រឹក", icon: "⏰", category: "ពេលព្រឹក", createdAt: new Date().toISOString() },
+  { id: "2", name: "សមាធិពេលព្រឹក 10 នាទី", icon: "🧘", category: "ស្មារតី", createdAt: new Date().toISOString() },
+  { id: "3", name: "អានសៀវភៅ 20 ទំព័រ", icon: "📖", category: "ការអភិវឌ្ឍ", createdAt: new Date().toISOString() },
+  { id: "4", name: "ហាត់ប្រាណ / Gym 45 នាទី", icon: "🏋️", category: "កាយសម្បទា", createdAt: new Date().toISOString() },
+  { id: "5", name: "ញ៉ាំទឹក 2.5 លីត្រ", icon: "💧", category: "សុខភាព", createdAt: new Date().toISOString() },
+  { id: "6", name: "តមជាតិស្ករ / បរិភោគបន្លែ", icon: "🥗", category: "សុខភាព", createdAt: new Date().toISOString() },
+  { id: "7", name: "ផ្តោតលើការងារ / កូដ 2 ម៉ោង", icon: "💻", category: "ផលិតភាព", createdAt: new Date().toISOString() },
+  { id: "8", name: "រៀនជំនាញថ្មី 30 នាទី", icon: "🚀", category: "ការអភិវឌ្ឍ", createdAt: new Date().toISOString() },
+  { id: "9", name: "រៀបចំតុ និងកន្លែងធ្វើការ", icon: "✨", category: "រៀបចំ", createdAt: new Date().toISOString() },
+  { id: "10", name: "ចូលគេងមុនម៉ោង 10:30 យប់", icon: "🌙", category: "ពេលយប់", createdAt: new Date().toISOString() },
 ];
 
-const HABITS_STORAGE_KEY = "habit_tracker_habits_v1";
-const COMPLETIONS_STORAGE_KEY = "habit_tracker_completions_v1";
-const WELLNESS_STORAGE_KEY = "habit_tracker_wellness_v1";
+const HABITS_STORAGE_KEY = "habit_tracker_habits_km_v2";
+const COMPLETIONS_STORAGE_KEY = "habit_tracker_completions_km_v2";
+const WELLNESS_STORAGE_KEY = "habit_tracker_wellness_km_v2";
 
 export function loadHabits(): Habit[] {
   if (typeof window === "undefined") return DEFAULT_HABITS;
@@ -46,7 +46,6 @@ export function loadCompletions(): HabitCompletionMap {
   try {
     const raw = localStorage.getItem(COMPLETIONS_STORAGE_KEY);
     if (!raw) {
-      // Pre-populate some realistic sample data for current month (first 10 days) like in the screenshot
       const sampleCompletions: HabitCompletionMap = {};
       const now = new Date();
       const year = now.getFullYear();
@@ -57,7 +56,6 @@ export function loadCompletions(): HabitCompletionMap {
       DEFAULT_HABITS.forEach((h, hIdx) => {
         for (let d = 1; d <= maxSampleDay; d++) {
           const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          // Give ~80-90% check rate for realistic visual
           const isDone = ((d + hIdx * 3) % 7 !== 0);
           sampleCompletions[`${h.id}_${dateStr}`] = isDone;
         }
@@ -116,4 +114,3 @@ export function saveWellness(wellness: WellnessMap): void {
     console.error("Failed to save wellness to localStorage", e);
   }
 }
-

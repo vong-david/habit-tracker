@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Habit, DayInfo, HabitCompletionMap } from "@/types/habit";
-import { Trash2, Check } from "lucide-react";
+import { Trash2, Check, ArrowLeftRight } from "lucide-react";
 
 interface HabitGridProps {
   habits: Habit[];
@@ -11,6 +11,15 @@ interface HabitGridProps {
   completions: HabitCompletionMap;
   onToggleHabit: (habitId: string, dateString: string) => void;
   onDeleteHabit: (habitId: string) => void;
+}
+
+const KHMER_NUMBERS = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
+function toKhmerNum(num: number): string {
+  return num
+    .toString()
+    .split("")
+    .map((d) => KHMER_NUMBERS[parseInt(d, 10)] || d)
+    .join("");
 }
 
 export const HabitGrid: React.FC<HabitGridProps> = ({
@@ -23,42 +32,51 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
 }) => {
   return (
     <div className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm dark:shadow-xl transition-colors">
-      <div className="overflow-x-auto">
+      {/* Mobile scroll hint */}
+      <div className="sm:hidden px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/20 text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 font-medium">
+          <ArrowLeftRight className="w-3.5 h-3.5 animate-pulse" />
+          អូសទៅឆ្វេង-ស្តាំ ដើម្បីមើលថ្ងៃទាំងអស់
+        </span>
+        <span className="text-[10px] text-gray-500">{days.length} ថ្ងៃ</span>
+      </div>
+
+      <div className="overflow-x-auto relative">
         <table className="w-full border-collapse text-xs select-none">
           <thead>
             {/* 1. Group Headers: Week 1, Week 2, Week 3, etc. */}
             <tr className="bg-gray-50 dark:bg-[#181a24] text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-800">
-              <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#181a24] px-4 py-2.5 text-left font-bold uppercase tracking-wider text-xs border-r border-gray-200 dark:border-gray-800 min-w-[220px] shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
-                Habits ({habits.length})
+              <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#181a24] px-3 sm:px-4 py-2 sm:py-2.5 text-left font-bold uppercase tracking-wider text-xs border-r border-gray-200 dark:border-gray-800 min-w-[145px] sm:min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                ទម្លាប់ ({habits.length})
               </th>
 
               {weeks.map((week) => (
                 <th
                   key={`week-head-${week.weekNumber}`}
                   colSpan={week.days.length}
-                  className="px-2 py-2 text-center font-bold uppercase tracking-wider text-xs border-r border-gray-200 dark:border-gray-800 bg-gray-100/70 dark:bg-[#151722] text-gray-800 dark:text-gray-200"
+                  className="px-2 py-2 text-center font-bold tracking-wider text-xs border-r border-gray-200 dark:border-gray-800 bg-gray-100/70 dark:bg-[#151722] text-gray-800 dark:text-gray-200"
                 >
-                  Week {week.weekNumber}
+                  សប្តាហ៍ទី {toKhmerNum(week.weekNumber)}
                 </th>
               ))}
 
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider text-xs bg-gray-50 dark:bg-[#181a24] min-w-[90px] text-gray-800 dark:text-gray-200">
-                Progress
+              <th className="px-2 sm:px-3 py-2 text-center font-bold tracking-wider text-xs bg-gray-50 dark:bg-[#181a24] min-w-[70px] sm:min-w-[90px] text-gray-800 dark:text-gray-200">
+                លទ្ធផល
               </th>
             </tr>
 
-            {/* 2. Sub-Header: Day of week (Mo, Tu, We, Th, Fr, Sa, Su) */}
+            {/* 2. Sub-Header: Day of week */}
             <tr className="bg-gray-100/60 dark:bg-[#141620] text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 text-[11px]">
-              <th className="sticky left-0 z-20 bg-gray-100/60 dark:bg-[#141620] px-4 py-1.5 text-left font-medium border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
-                Category
+              <th className="sticky left-0 z-20 bg-gray-100/60 dark:bg-[#141620] px-3 sm:px-4 py-1 sm:py-1.5 text-left font-medium border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-[10px] sm:text-[11px]">
+                ប្រភេទ
               </th>
 
               {days.map((day) => {
-                const isWeekend = day.dayOfWeek === "Sa" || day.dayOfWeek === "Su";
+                const isWeekend = day.dayOfWeek === "អា" || day.dayOfWeek === "ស";
                 return (
                   <th
                     key={`dow-${day.dateString}`}
-                    className={`px-1 py-1 text-center font-semibold border-r border-gray-200 dark:border-gray-800/80 min-w-[34px] ${
+                    className={`px-1 py-1 text-center font-semibold border-r border-gray-200 dark:border-gray-800/80 min-w-[32px] sm:min-w-[36px] ${
                       day.isToday
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
                         : isWeekend
@@ -71,23 +89,23 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                 );
               })}
 
-              <th className="px-2 py-1 text-center font-medium border-gray-200 dark:border-gray-800 text-[10px]">
-                Done
+              <th className="px-1 sm:px-2 py-1 text-center font-medium border-gray-200 dark:border-gray-800 text-[10px]">
+                សម្រេច
               </th>
             </tr>
 
             {/* 3. Sub-Header: Day Numbers (1, 2, 3... 31) */}
             <tr className="bg-gray-200/50 dark:bg-[#10121a] text-gray-700 dark:text-gray-300 border-b-2 border-gray-300 dark:border-gray-700 text-xs">
-              <th className="sticky left-0 z-20 bg-gray-200/50 dark:bg-[#10121a] px-4 py-1.5 text-left font-semibold border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-gray-600 dark:text-gray-400">
-                Days
+              <th className="sticky left-0 z-20 bg-gray-200/50 dark:bg-[#10121a] px-3 sm:px-4 py-1 sm:py-1.5 text-left font-semibold border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs">
+                ថ្ងៃទី
               </th>
 
               {days.map((day) => (
                 <th
                   key={`num-${day.dateString}`}
-                  className={`px-1 py-1 text-center font-bold border-r border-gray-200 dark:border-gray-800 min-w-[34px] ${
+                  className={`px-1 py-1 text-center font-bold border-r border-gray-200 dark:border-gray-800 min-w-[32px] sm:min-w-[36px] ${
                     day.isToday
-                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black"
                       : "text-gray-800 dark:text-gray-300"
                   }`}
                 >
@@ -95,8 +113,8 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                 </th>
               ))}
 
-              <th className="px-2 py-1 text-center font-bold text-gray-600 dark:text-gray-400 text-[10px]">
-                % Rate
+              <th className="px-1 sm:px-2 py-1 text-center font-bold text-gray-600 dark:text-gray-400 text-[10px]">
+                អត្រា %
               </th>
             </tr>
           </thead>
@@ -115,18 +133,18 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                   key={habit.id}
                   className="hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-colors group"
                 >
-                  {/* Left Column: Sticky Habit Info */}
-                  <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] group-hover:bg-gray-50 dark:group-hover:bg-[#181a24] px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] transition-colors">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 truncate">
-                        <span className="text-base select-none shrink-0" role="img" aria-label="icon">
+                  {/* Left Column: Sticky Habit Info (Mobile width optimized) */}
+                  <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] group-hover:bg-gray-50 dark:group-hover:bg-[#181a24] px-2.5 sm:px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] transition-colors max-w-[145px] sm:max-w-none">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 sm:gap-2.5 truncate">
+                        <span className="text-sm sm:text-base select-none shrink-0" role="img" aria-label="icon">
                           {habit.icon || "📌"}
                         </span>
                         <div className="truncate">
-                          <p className="font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-black dark:group-hover:text-white">
+                          <p className="font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-black dark:group-hover:text-white text-xs sm:text-sm">
                             {habit.name}
                           </p>
-                          <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <span className="text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
                             {habit.category}
                           </span>
                         </div>
@@ -135,7 +153,7 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                       <button
                         onClick={() => onDeleteHabit(habit.id)}
                         className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded transition-all shrink-0"
-                        title="Delete habit"
+                        title="លុបទម្លាប់នេះ"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -151,7 +169,7 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                       <td
                         key={key}
                         onClick={() => onToggleHabit(habit.id, day.dateString)}
-                        className={`px-1 py-1.5 text-center border-r border-gray-200 dark:border-gray-800/80 cursor-pointer select-none transition-all ${
+                        className={`px-0.5 sm:px-1 py-1.5 text-center border-r border-gray-200 dark:border-gray-800/80 cursor-pointer select-none transition-all active:scale-90 ${
                           day.isToday
                             ? "bg-emerald-500/10 hover:bg-emerald-500/20"
                             : "hover:bg-gray-100/70 dark:hover:bg-gray-800/40"
@@ -159,7 +177,7 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                       >
                         <div className="flex items-center justify-center">
                           <div
-                            className={`w-5 h-5 rounded flex items-center justify-center transition-all border ${
+                            className={`w-5 h-5 sm:w-5 sm:h-5 rounded flex items-center justify-center transition-all border ${
                               isChecked
                                 ? "bg-slate-900 border-slate-900 text-white dark:bg-slate-200 dark:border-white dark:text-gray-950 shadow-sm"
                                 : "bg-white dark:bg-transparent border-gray-300 dark:border-gray-700/80 hover:border-gray-500"
@@ -173,12 +191,12 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                   })}
 
                   {/* Progress Column */}
-                  <td className="px-2 py-1.5 text-center font-medium bg-white dark:bg-[#12141c] text-gray-700 dark:text-gray-300">
+                  <td className="px-1.5 sm:px-2 py-1.5 text-center font-medium bg-white dark:bg-[#12141c] text-gray-700 dark:text-gray-300">
                     <div className="flex flex-col items-center justify-center">
-                      <span className="text-[11px] font-bold text-gray-900 dark:text-gray-200">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-gray-900 dark:text-gray-200">
                         {completedInMonth}/{days.length}
                       </span>
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
                         {habitRate}%
                       </span>
                     </div>
@@ -189,8 +207,8 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
 
             {/* Daily Total Summary Row */}
             <tr className="bg-gray-100/90 dark:bg-[#151722] font-semibold text-gray-700 dark:text-gray-300 border-t-2 border-gray-300 dark:border-gray-700">
-              <td className="sticky left-0 z-10 bg-gray-100/90 dark:bg-[#151722] px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-gray-600 dark:text-gray-400">
-                Daily Completed
+              <td className="sticky left-0 z-10 bg-gray-100/90 dark:bg-[#151722] px-3 sm:px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-gray-700 dark:text-gray-300 text-xs font-bold">
+                បំពេញសរុបប្រចាំថ្ងៃ
               </td>
 
               {days.map((day) => {
@@ -215,8 +233,8 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                 );
               })}
 
-              <td className="px-2 py-2 text-center text-gray-500 dark:text-gray-400 text-[10px]">
-                Total
+              <td className="px-1 sm:px-2 py-2 text-center text-gray-500 dark:text-gray-400 text-[10px] font-bold">
+                សរុប
               </td>
             </tr>
           </tbody>

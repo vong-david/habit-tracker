@@ -37,42 +37,42 @@ export const WellnessTracker: React.FC<WellnessTrackerProps> = ({
 
   return (
     <div className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm dark:shadow-xl mt-6 transition-colors">
-      {/* Header bar matching the screenshot */}
-      <div className="bg-gray-50 dark:bg-[#181a24] border-b border-gray-200 dark:border-gray-800 px-4 py-2.5 flex items-center justify-between">
-        <h2 className="text-sm font-bold tracking-wider uppercase text-gray-800 dark:text-gray-200">
-          Overall wellness
+      {/* Header bar matching screenshot */}
+      <div className="bg-gray-50 dark:bg-[#181a24] border-b border-gray-200 dark:border-gray-800 px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xs sm:text-sm font-bold tracking-wide uppercase text-gray-800 dark:text-gray-200">
+          សុខភាពទូទៅ
         </h2>
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-3 sm:gap-4 text-xs">
           <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-            <span>Avg Mood: <strong>{avgMood} / 5</strong></span>
+            <span>អារម្មណ៍មធ្យម: <strong>{avgMood} / 5</strong></span>
           </div>
           <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400">
             <span className="w-2.5 h-2.5 rounded bg-cyan-500 inline-block" />
-            <span>Avg Sleep: <strong>{avgSleep}h</strong></span>
+            <span>គេងមធ្យម: <strong>{avgSleep} ម៉ោង</strong></span>
           </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto relative">
         <table className="w-full border-collapse text-xs select-none">
           <thead>
             <tr className="bg-gray-100/60 dark:bg-[#141620] text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 text-[11px]">
-              <th className="sticky left-0 z-20 bg-gray-100/60 dark:bg-[#141620] px-4 py-1.5 text-left font-medium border-r border-gray-200 dark:border-gray-800 min-w-[220px] shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
-                Metric
+              <th className="sticky left-0 z-20 bg-gray-100/60 dark:bg-[#141620] px-3 sm:px-4 py-1.5 text-left font-medium border-r border-gray-200 dark:border-gray-800 min-w-[145px] sm:min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-[10px] sm:text-xs">
+                រង្វាស់
               </th>
               {days.map((day) => (
                 <th
                   key={`wel-head-${day.dateString}`}
-                  className={`px-1 py-1 text-center font-semibold border-r border-gray-200 dark:border-gray-800/80 min-w-[34px] ${
+                  className={`px-1 py-1 text-center font-semibold border-r border-gray-200 dark:border-gray-800/80 min-w-[32px] sm:min-w-[36px] ${
                     day.isToday ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 dark:text-gray-400"
                   }`}
                 >
                   {day.dayNumber}
                 </th>
               ))}
-              <th className="px-3 py-1 text-center font-medium min-w-[90px] text-gray-700 dark:text-gray-300">
-                Average
+              <th className="px-2 sm:px-3 py-1 text-center font-medium min-w-[70px] sm:min-w-[90px] text-gray-700 dark:text-gray-300 text-[10px] sm:text-xs">
+                មធ្យមភាគ
               </th>
             </tr>
           </thead>
@@ -80,9 +80,9 @@ export const WellnessTracker: React.FC<WellnessTrackerProps> = ({
           <tbody className="divide-y divide-gray-200 dark:divide-gray-800/70">
             {/* 1. Mood Row */}
             <tr className="hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-colors">
-              <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <Smile className="w-4 h-4 text-emerald-500" />
-                <span>Mood (1 - 5)</span>
+              <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] px-3 sm:px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 text-xs sm:text-sm">
+                <Smile className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span className="truncate">អារម្មណ៍ (1-5)</span>
               </td>
 
               {days.map((day) => {
@@ -99,7 +99,7 @@ export const WellnessTracker: React.FC<WellnessTrackerProps> = ({
                       onChange={(e) =>
                         onUpdateWellness(day.dateString, "mood", Number(e.target.value))
                       }
-                      className="bg-gray-100 dark:bg-[#181a24] text-center text-xs text-emerald-600 dark:text-emerald-400 font-bold rounded px-1 py-0.5 border border-gray-300 dark:border-gray-700/80 focus:border-emerald-500 outline-none w-7 cursor-pointer"
+                      className="bg-gray-100 dark:bg-[#181a24] text-center text-xs text-emerald-600 dark:text-emerald-400 font-bold rounded px-0.5 py-0.5 border border-gray-300 dark:border-gray-700/80 focus:border-emerald-500 outline-none w-7 cursor-pointer"
                     >
                       <option value="">-</option>
                       <option value="1">1</option>
@@ -112,16 +112,16 @@ export const WellnessTracker: React.FC<WellnessTrackerProps> = ({
                 );
               })}
 
-              <td className="px-2 py-1.5 text-center font-bold text-emerald-600 dark:text-emerald-400">
+              <td className="px-1.5 sm:px-2 py-1.5 text-center font-bold text-emerald-600 dark:text-emerald-400 text-xs">
                 {avgMood}
               </td>
             </tr>
 
             {/* 2. Hours of Sleep Row */}
             <tr className="hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-colors">
-              <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <Moon className="w-4 h-4 text-cyan-500" />
-                <span>Hours of Sleep</span>
+              <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] px-3 sm:px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 text-xs sm:text-sm">
+                <Moon className="w-4 h-4 text-cyan-500 shrink-0" />
+                <span className="truncate">ម៉ោងគេង</span>
               </td>
 
               {days.map((day) => {
@@ -153,7 +153,7 @@ export const WellnessTracker: React.FC<WellnessTrackerProps> = ({
                 );
               })}
 
-              <td className="px-2 py-1.5 text-center font-bold text-cyan-600 dark:text-cyan-400">
+              <td className="px-1.5 sm:px-2 py-1.5 text-center font-bold text-cyan-600 dark:text-cyan-400 text-xs">
                 {avgSleep}h
               </td>
             </tr>

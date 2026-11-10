@@ -15,14 +15,14 @@ const EMOJI_OPTIONS = [
 ];
 
 const CATEGORIES = [
-  "Morning",
-  "Fitness",
-  "Health",
-  "Productivity",
-  "Growth",
-  "Mindfulness",
-  "Night",
-  "General",
+  "ពេលព្រឹក",
+  "កាយសម្បទា",
+  "សុខភាព",
+  "ផលិតភាព",
+  "ការអភិវឌ្ឍ",
+  "ស្មារតី",
+  "ពេលយប់",
+  "ទូទៅ",
 ];
 
 export const AddHabitModal: React.FC<AddHabitModalProps> = ({
@@ -32,7 +32,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("🎯");
-  const [category, setCategory] = useState("General");
+  const [category, setCategory] = useState("ទូទៅ");
 
   if (!isOpen) return null;
 
@@ -49,12 +49,12 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#151722] border border-gray-200 dark:border-gray-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
-        <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#151722] border border-gray-200 dark:border-gray-700 w-full max-w-md rounded-2xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-3.5 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-emerald-500" />
-            <h3 className="text-base font-bold text-gray-900 dark:text-white">Add New Habit</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">បន្ថែមទម្លាប់ថ្មី</h3>
           </div>
           <button
             onClick={onClose}
@@ -68,13 +68,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
           {/* Habit Name */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Habit Name
+              ឈ្មោះទម្លាប់
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Read 15 mins, Drink Water..."
+              placeholder="ឧ. អានសៀវភៅ 15 នាទី, ញ៉ាំទឹក 2L..."
               required
               autoFocus
               className="w-full bg-gray-50 dark:bg-[#1b1e2c] border border-gray-300 dark:border-gray-700 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -84,7 +84,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
           {/* Category */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Category
+              ប្រភេទ
             </label>
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.map((cat) => (
@@ -107,7 +107,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
           {/* Emoji / Icon Selector */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Choose an Icon
+              ជ្រើសរើសរូបតំណាង (Icon)
             </label>
             <div className="grid grid-cols-10 gap-1.5 bg-gray-50 dark:bg-[#1b1e2c] p-2 rounded-lg border border-gray-200 dark:border-gray-800 max-h-32 overflow-y-auto">
               {EMOJI_OPTIONS.map((e) => (
@@ -133,13 +133,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
-              Cancel
+              បោះបង់
             </button>
             <button
               type="submit"
               className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-500 rounded-lg transition-colors shadow-sm"
             >
-              Save Habit
+              រក្សាទុកទម្លាប់
             </button>
           </div>
         </form>
