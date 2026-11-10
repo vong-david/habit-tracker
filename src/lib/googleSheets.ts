@@ -169,3 +169,4 @@ export async function syncHabitDataToSheet(
     throw new Error(`Google Sheets sync failed: ${errorText}`);
   }
 }
+
