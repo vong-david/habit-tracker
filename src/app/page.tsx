@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Habit, HabitCompletionMap, WellnessMap } from "@/types/habit";
-import { UserProfile } from "@/types/auth";
+import { UserProfile, SyncStatus } from "@/types/auth";
 import { getStoredUser, saveUserSession } from "@/lib/auth";
 import {
   DEFAULT_HABITS,
@@ -13,7 +13,8 @@ import {
   loadWellness,
   saveWellness,
 } from "@/lib/storage";
-import { getDaysInMonth, groupDaysByWeek } from "@/lib/dateUtils";
+import { getDaysInMonth, groupDaysByWeek, getKhmerMonthYear } from "@/lib/dateUtils";
+import { syncHabitDataToSheet } from "@/lib/googleSheets";
 import { Header } from "@/components/Header";
 import { DailyProgressBarChart } from "@/components/DailyProgressBarChart";
 import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
@@ -35,6 +36,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [habits, setHabits] = useState<Habit[]>(DEFAULT_HABITS);
   const [completions, setCompletions] = useState<HabitCompletionMap>({});
@@ -79,6 +81,64 @@ export default function Home() {
     saveWellness(wellness, user?.id);
   }, [wellness, user?.id, isClient]);
 
+  // Days in current selected month
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
+  const weeks = useMemo(() => groupDaysByWeek(days), [days]);
+
+  // Auto-sync debounced to Google Sheet (if user has connected Google Sheets)
+  useEffect(() => {
+    if (!isClient || !user?.accessToken || !user?.spreadsheetId) return;
+
+    setSyncStatus("syncing");
+    const timer = setTimeout(async () => {
+      try {
+        const monthLabel = getKhmerMonthYear(currentDate);
+        await syncHabitDataToSheet(
+          user.accessToken!,
+          user.spreadsheetId!,
+          habits,
+          completions,
+          wellness,
+          days,
+          monthLabel
+        );
+        setSyncStatus("synced");
+      } catch (err) {
+        console.warn("Auto-sync error", err);
+        setSyncStatus("error");
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [habits, completions, wellness, days, currentDate, user, isClient]);
+
+  // Manual sync handler
+  const handleManualSync = useCallback(async () => {
+    if (!user?.accessToken || !user?.spreadsheetId) return;
+    setSyncStatus("syncing");
+    try {
+      const monthLabel = getKhmerMonthYear(currentDate);
+      await syncHabitDataToSheet(
+        user.accessToken,
+        user.spreadsheetId,
+        habits,
+        completions,
+        wellness,
+        days,
+        monthLabel
+      );
+      setSyncStatus("synced");
+      alert("បាន Sync ទិន្នន័យទៅកាន់ Google Sheets រួចរាល់!");
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("error");
+      alert("មានបញ្ហាក្នុងការ Sync ទៅ Google Sheets។");
+    }
+  }, [user, currentDate, habits, completions, wellness, days]);
+
   // Handle Login
   const handleLogin = (newUser: UserProfile) => {
     setUser(newUser);
@@ -92,6 +152,7 @@ export default function Home() {
   const handleLogout = () => {
     setUser(null);
     saveUserSession(null);
+    setSyncStatus("idle");
     setHabits(loadHabits(undefined));
     setCompletions(loadCompletions(undefined));
     setWellness(loadWellness(undefined));
@@ -108,13 +169,6 @@ export default function Home() {
       document.documentElement.classList.remove("dark");
     }
   };
-
-  // Days in current selected month
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
-  const weeks = useMemo(() => groupDaysByWeek(days), [days]);
 
   // Month navigation handlers
   const handlePrevMonth = () => {
@@ -159,7 +213,6 @@ export default function Home() {
   const handleDeleteHabit = (habitId: string) => {
     if (!confirm("តើអ្នកប្រាកដជាចង់លុបទម្លាប់នេះមែនទេ?")) return;
     setHabits((prev) => prev.filter((h) => h.id !== habitId));
-    // Clean up associated completion keys
     setCompletions((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
@@ -226,7 +279,7 @@ export default function Home() {
   // Export JSON
   const handleExportData = () => {
     const backup = {
-      user: user ? { email: user.email, name: user.name } : null,
+      user: user ? { email: user.email, name: user.name, spreadsheetUrl: user.spreadsheetUrl } : null,
       habits,
       completions,
       wellness,
@@ -345,14 +398,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#090a0f] text-gray-900 dark:text-gray-100 flex flex-col pb-12 transition-colors duration-200">
-      {/* 1. Header Bar with Auth and Theme */}
+      {/* 1. Header Bar with Auth, Google Sheets, Theme */}
       <Header
         currentDate={currentDate}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         user={user}
+        syncStatus={syncStatus}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        onManualSync={handleManualSync}
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
         onGoToToday={handleGoToToday}

@@ -14,7 +14,7 @@ import {
   Moon,
 } from "lucide-react";
 import { getKhmerMonthYear } from "@/lib/dateUtils";
-import { UserProfile } from "@/types/auth";
+import { UserProfile, SyncStatus } from "@/types/auth";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 
 interface HeaderProps {
@@ -22,8 +22,10 @@ interface HeaderProps {
   theme: "dark" | "light";
   onToggleTheme: () => void;
   user: UserProfile | null;
+  syncStatus?: SyncStatus;
   onLogin: (user: UserProfile) => void;
   onLogout: () => void;
+  onManualSync?: () => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onGoToToday: () => void;
@@ -41,8 +43,10 @@ export const Header: React.FC<HeaderProps> = ({
   theme,
   onToggleTheme,
   user,
+  syncStatus = "idle",
   onLogin,
   onLogout,
+  onManualSync,
   onPrevMonth,
   onNextMonth,
   onGoToToday,
@@ -72,11 +76,11 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
                 <span>តាមដានទម្លាប់</span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hidden xs:inline-block">
-                  Vercel Free
+                  Google Sheet Storage
                 </span>
               </h1>
               <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                កសាងទម្លាប់ល្អជារៀងរាល់ថ្ងៃ
+                កត់ត្រាទិន្នន័យក្នុង Excel Google Sheets ផ្ទាល់ខ្លួន
               </p>
             </div>
           </div>
@@ -114,7 +118,13 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Section: Google Sign-in & Theme Switcher */}
           <div className="flex items-center gap-2">
-            <GoogleAuthButton user={user} onLogin={onLogin} onLogout={onLogout} />
+            <GoogleAuthButton
+              user={user}
+              syncStatus={syncStatus}
+              onLogin={onLogin}
+              onLogout={onLogout}
+              onManualSync={onManualSync}
+            />
 
             {/* Theme Switcher Button */}
             <button

@@ -225,3 +225,4 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
     </div>
   );
 };
+
