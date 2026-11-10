@@ -145,3 +145,4 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
     </div>
   );
 };
+

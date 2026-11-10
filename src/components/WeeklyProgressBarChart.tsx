@@ -99,3 +99,4 @@ export const WeeklyProgressBarChart: React.FC<WeeklyProgressBarChartProps> = ({ 
     </div>
   );
 };
+

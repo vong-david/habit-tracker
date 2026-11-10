@@ -43,3 +43,4 @@ export function groupDaysByWeek(days: DayInfo[]): { weekNumber: number; days: Da
     days: groups[Number(key)],
   }));
 }
+

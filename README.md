@@ -24,17 +24,19 @@ A modern, spreadsheet-style habit tracker and wellness dashboard designed for se
 
 ---
 
-## 🚀 របៀបដំណើរការលើកុំព្យូទ័រ (Run Locally)
+## 🚀 របៀបដំណើរការលើកុំព្យូទ័រជាមួយ Bun (Run Locally with Bun)
 
 1. បើក Terminal ក្នុង folder នេះ៖
    ```bash
-   npm run dev
+   bun run dev
    ```
 2. បើក Browser ទៅកាន់ [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## 🌐 របៀបបង្ហោះលើ Vercel ដោយឥតគិតថ្លៃ (Deploy to Vercel for Free)
+
+Vercel គាំទ្រ **Bun** ដោយស្វ័យប្រវត្តិតាមរយៈឯកសារ `bun.lock` / `bun.lockb`។
 
 1. **បង្កើត Repository លើ GitHub:**
    - ចូលទៅកាន់ [github.com/new](https://github.com/new) ហើយបង្កើត Repository ថ្មី (ឧ. `my-habit-tracker`)។
@@ -49,5 +51,6 @@ A modern, spreadsheet-style habit tracker and wellness dashboard designed for se
    - ចូលទៅកាន់ [vercel.com](https://vercel.com) (Login ដោយប្រើ GitHub)។
    - ចុច **"Add New..."** -> **"Project"**។
    - ជ្រើសរើស repository `my-habit-tracker` រួចចុច **"Import"**។
-   - ចុច **"Deploy"** (Vercel នឹងរៀបចំ Build ដោយស្វ័យប្រវត្តិ ក្នុងរយៈពេលក្រោម 1 នាទី)។
+   - ចុច **"Deploy"** (Vercel នឹងប្រើប្រាស់ Bun ដើម្បី Build យ៉ាងលឿនក្រោម 20 វិនាទី)។
    - អ្នកនឹងទទួលបាន Link គេហទំព័រផ្ទាល់ខ្លួន (ឧ. `https://my-habit-tracker.vercel.app`) សម្រាប់ប្រើប្រាស់បានជារៀងរហូតដោយឥតគិតថ្លៃ!
+

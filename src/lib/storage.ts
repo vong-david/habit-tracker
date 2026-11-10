@@ -116,3 +116,4 @@ export function saveWellness(wellness: WellnessMap): void {
     console.error("Failed to save wellness to localStorage", e);
   }
 }
+

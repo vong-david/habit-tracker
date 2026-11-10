@@ -138,3 +138,4 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({ da
     </div>
   );
 };
+

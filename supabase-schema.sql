@@ -49,3 +49,4 @@ CREATE POLICY "Users can manage their own habit logs"
 CREATE POLICY "Users can manage their own wellness logs" 
   ON wellness_logs FOR ALL 
   USING (auth.uid() = user_id);
+
