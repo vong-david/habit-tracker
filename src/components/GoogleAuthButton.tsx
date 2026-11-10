@@ -16,9 +16,8 @@ import {
   ExternalLink,
   FileSpreadsheet,
   RefreshCw,
-  Sparkles,
-  ChevronRight,
-  Shield,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
 
 interface GoogleAuthButtonProps {
@@ -75,9 +74,6 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
   const [mounted, setMounted] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
-  const [showAdvancedKey, setShowAdvancedKey] = useState(false);
-  const [customEmail, setCustomEmail] = useState("");
-  const [customName, setCustomName] = useState("");
   const [clientIdInput, setClientIdInput] = useState("");
   const [isConnectingSheets, setIsConnectingSheets] = useState(false);
 
@@ -101,7 +97,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Initialize official Google Identity Services
+  // Initialize official Google Identity Services script
   useEffect(() => {
     if (!clientId) return;
 
@@ -191,23 +187,6 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     tokenClient.requestAccessToken();
   };
 
-  const handleQuickLogin = (email: string, name: string) => {
-    const safeEmail = email.trim() || "david.vong@gmail.com";
-    const safeName = name.trim() || "David Vong";
-
-    const profile: UserProfile = {
-      id: "user_" + safeEmail.toLowerCase().replace(/[^a-z0-9]/g, "_"),
-      email: safeEmail,
-      name: safeName,
-      picture: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(safeName)}&backgroundColor=10b981`,
-      spreadsheetId: "sheet_" + Date.now(),
-      spreadsheetUrl: "https://docs.google.com/spreadsheets",
-    };
-
-    onLogin(profile);
-    setIsSetupModalOpen(false);
-  };
-
   const handleSaveClientId = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientIdInput.trim()) return;
@@ -216,11 +195,11 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     window.location.reload();
   };
 
-  // Google Modal Content
+  // Google Setup Modal (Only shown if Google Client ID is not configured yet)
   const modalContent = isSetupModalOpen && mounted ? (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="bg-white dark:bg-[#151722] border border-gray-200 dark:border-gray-800 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto text-left"
+        className="bg-white dark:bg-[#151722] border border-gray-200 dark:border-gray-800 w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -231,8 +210,8 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Google Header Branding */}
-        <div className="text-center pt-2 pb-5">
+        {/* Google Header */}
+        <div className="text-center pt-2 pb-4">
           <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 flex items-center justify-center mx-auto mb-3 shadow-sm">
             <svg className="w-6 h-6" viewBox="0 0 24 24">
               <path
@@ -255,109 +234,68 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
           </div>
 
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            ចូលគណនីជាមួយ Google
+            បើកដំណើរការ Real Google Sign-In
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            ដើម្បីកត់ត្រាទិន្នន័យក្នុង Excel Google Sheets ផ្ទាល់ខ្លួន
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
+            ដើម្បីឱ្យ <strong>User ណាក៏ដោយ</strong> អាចចុច Sign in ដោយប្រើ Google Account ពិតប្រាកដរបស់គេបាន អ្នកត្រូវដាក់ <strong>Google Client ID</strong> (ឥតគិតថ្លៃ ១០០%)
           </p>
         </div>
 
-        {/* Account Selection Card (Google OAuth Style) */}
-        <div className="space-y-3">
-          {/* Quick Account 1: David Vong */}
-          <div
-            onClick={() => handleQuickLogin("david.vong@gmail.com", "David Vong")}
-            className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-emerald-500/60 hover:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.06] cursor-pointer transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-sm">
-                DV
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                  David Vong
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  david.vong@gmail.com
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-              <span>ចូលគណនី</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </div>
+        {/* 3 Step Guide */}
+        <div className="bg-gray-50 dark:bg-[#181a24] p-4 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-3 text-xs text-gray-700 dark:text-gray-300">
+          <p className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 text-sm">
+            <Key className="w-4 h-4 text-emerald-500" />
+            <span>របៀបយក Google Client ID (ត្រឹមតែ ២ នាទី)៖</span>
+          </p>
 
-          {/* Quick Custom Login input */}
-          <div className="bg-gray-50 dark:bg-[#181a24] p-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-2.5">
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-              ឬវាយ Gmail របស់អ្នកផ្ទាល់៖
-            </p>
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="ឈ្មោះ (ឧ. David)"
-                className="w-full bg-white dark:bg-[#12141c] border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2 text-xs text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-emerald-500"
-              />
-              <input
-                type="email"
-                value={customEmail}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="អាសយដ្ឋាន Gmail (ឧ. myname@gmail.com)"
-                className="w-full bg-white dark:bg-[#12141c] border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2 text-xs text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-emerald-500"
-              />
-              <button
-                type="button"
-                onClick={() => handleQuickLogin(customEmail, customName)}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+          <ol className="list-decimal list-inside space-y-1.5 leading-relaxed text-[11px] sm:text-xs">
+            <li>
+              ចូលទៅកាន់{" "}
+              <a
+                href="https://console.cloud.google.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-500 font-bold hover:underline"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>ចូលគណនី & ភ្ជាប់ Excel Storage</span>
-              </button>
-            </div>
-          </div>
+                console.cloud.google.com
+              </a>{" "}
+              (Login ជាមួយ Gmail របស់អ្នក)
+            </li>
+            <li>ចូលទៅកាន់ <strong>APIs & Services</strong> ➡️ <strong>Credentials</strong></li>
+            <li>ចុច <strong>Create Credentials</strong> ➡️ ជ្រើសរើស <strong>OAuth client ID</strong></li>
+            <li>ជ្រើសរើស <strong>Web application</strong> ហើយត្រង់ <em>Authorized JavaScript origins</em> បន្ថែម Link Vercel និង <code>http://localhost:3000</code></li>
+            <li>ចុច <strong>Create</strong> រួច Copy លេខកូដ <code>xxxx.apps.googleusercontent.com</code></li>
+          </ol>
         </div>
 
-        {/* Real Google Cloud Client ID (Collapsible / Advanced) */}
-        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+        {/* Client ID Input Form */}
+        <form onSubmit={handleSaveClientId} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              បិទភ្ជាប់ (Paste) Google Client ID នៅត្រង់នេះ៖
+            </label>
+            <input
+              type="text"
+              value={clientIdInput}
+              onChange={(e) => setClientIdInput(e.target.value)}
+              placeholder="123456789-xxxxxxxx.apps.googleusercontent.com"
+              required
+              className="w-full bg-gray-50 dark:bg-[#12141c] border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+
           <button
-            type="button"
-            onClick={() => setShowAdvancedKey((prev) => !prev)}
-            className="flex items-center justify-between w-full text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 py-1"
+            type="submit"
+            className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
           >
-            <span className="flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-cyan-500" />
-              <span>កំណត់ Google Client ID ផ្លូវការ (Google Cloud)</span>
-            </span>
-            <span>{showAdvancedKey ? "▲ បិទ" : "▼ បើក"}</span>
+            <Check className="w-4 h-4 stroke-[3]" />
+            <span>រក្សាទុក & បើកដំណើរការ Real Google Login ភ្លាមៗ</span>
           </button>
+        </form>
 
-          {showAdvancedKey && (
-            <form onSubmit={handleSaveClientId} className="mt-2.5 space-y-2 animate-in fade-in">
-              <input
-                type="text"
-                value={clientIdInput}
-                onChange={(e) => setClientIdInput(e.target.value)}
-                placeholder="xxxx-xxxx.apps.googleusercontent.com"
-                className="w-full bg-gray-50 dark:bg-[#12141c] border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-cyan-500"
-              />
-              <button
-                type="submit"
-                className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs font-semibold py-1.5 rounded-xl transition-colors"
-              >
-                រក្សាទុក Google Client ID
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* Security Footer Note */}
-        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-1.5 text-[10px] text-gray-400 text-center">
-          <Shield className="w-3.5 h-3.5 text-emerald-500" />
-          <span>ទិន្នន័យត្រូវបានការពារ និងកត់ត្រាក្នុង Excel ផ្ទាល់ខ្លួនរបស់អ្នក</span>
-        </div>
+        <p className="text-[10px] text-gray-400 text-center mt-3">
+          💡 អ្នកក៏អាចដាក់ក្នុង Environment Variable លើ Vercel ឈ្មោះ <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> ផងដែរ។
+        </p>
       </div>
     </div>
   ) : null;
@@ -405,7 +343,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
         </div>
       )}
 
-      {/* When Logged In: Show Avatar & Name */}
+      {/* When Logged In: Show Real Google Avatar & Name */}
       {user ? (
         <button
           onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -426,7 +364,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
           <span className="max-w-[90px] sm:max-w-[120px] truncate">{user.name}</span>
         </button>
       ) : (
-        /* When Not Logged In: Show Google Sign In Button */
+        /* When Not Logged In: Official Google Button or Trigger Button */
         <div className="flex items-center gap-1.5">
           {clientId ? (
             <div ref={googleBtnContainerRef} className="h-8" />
@@ -526,7 +464,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
         </div>
       )}
 
-      {/* Portal Modal Rendering directly to document.body */}
+      {/* Setup Modal */}
       {modalContent && createPortal(modalContent, document.body)}
     </div>
   );
