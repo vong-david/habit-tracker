@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Habit, HabitCompletionMap, WellnessMap, TrackerCycleConfig } from "@/types/habit";
+import { Habit, HabitCompletionMap, WellnessMap, TrackerCycleConfig, HabitNotesMap, DayInfo } from "@/types/habit";
 import { UserProfile, SyncStatus } from "@/types/auth";
 import { getStoredUser, saveUserSession } from "@/lib/auth";
 import {
@@ -14,6 +14,8 @@ import {
   saveWellness,
   loadCycleConfig,
   saveCycleConfig,
+  loadHabitNotes,
+  saveHabitNotes,
 } from "@/lib/storage";
 import {
   getDaysInMonth,
@@ -38,6 +40,7 @@ import { AddHabitModal } from "@/components/AddHabitModal";
 import { EditHabitModal } from "@/components/EditHabitModal";
 import { StartingDayModal } from "@/components/StartingDayModal";
 import { ExcelConnectionModal } from "@/components/ExcelConnectionModal";
+import { HabitNoteModal } from "@/components/HabitNoteModal";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -69,6 +72,8 @@ export default function Home() {
 
   const [habits, setHabits] = useState<Habit[]>(DEFAULT_HABITS);
   const [completions, setCompletions] = useState<HabitCompletionMap>({});
+  const [habitNotes, setHabitNotes] = useState<HabitNotesMap>({});
+  const [activeNoteTarget, setActiveNoteTarget] = useState<{ habit: Habit; day: DayInfo } | null>(null);
   const [wellness, setWellness] = useState<WellnessMap>({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
@@ -82,6 +87,7 @@ export default function Home() {
     const userId = storedUser?.id;
     setHabits(loadHabits(userId));
     setCompletions(loadCompletions(userId));
+    setHabitNotes(loadHabitNotes(userId));
     setWellness(loadWellness(userId));
 
     // Load cycle configuration (defaults to today_to_end)
@@ -146,6 +152,11 @@ export default function Home() {
     saveWellness(wellness, user?.id);
   }, [wellness, user?.id, isClient]);
 
+  useEffect(() => {
+    if (!isClient) return;
+    saveHabitNotes(habitNotes, user?.id);
+  }, [habitNotes, user?.id, isClient]);
+
   // Calendar Month values
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -198,7 +209,8 @@ export default function Home() {
           wellness,
           days,
           dateRangeLabel,
-          cycleConfig
+          cycleConfig,
+          habitNotes
         );
         setExcelState((prev) => ({
           ...prev,
@@ -212,7 +224,7 @@ export default function Home() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [habits, completions, wellness, days, dateRangeLabel, cycleConfig, excelState.isConnected, excelState.fileHandle, isClient]);
+  }, [habits, completions, habitNotes, wellness, days, dateRangeLabel, cycleConfig, excelState.isConnected, excelState.fileHandle, isClient]);
 
   // Auto-sync debounced to Google Sheet (if user has connected Google Sheets)
   useEffect(() => {
@@ -269,6 +281,7 @@ export default function Home() {
     saveUserSession(newUser);
     setHabits(loadHabits(newUser.id));
     setCompletions(loadCompletions(newUser.id));
+    setHabitNotes(loadHabitNotes(newUser.id));
     setWellness(loadWellness(newUser.id));
     const userCycle = loadCycleConfig(newUser.id);
     if (userCycle && userCycle.mode) {
@@ -283,6 +296,7 @@ export default function Home() {
     setSyncStatus("idle");
     setHabits(loadHabits(undefined));
     setCompletions(loadCompletions(undefined));
+    setHabitNotes(loadHabitNotes(undefined));
     setWellness(loadWellness(undefined));
     const guestCycle = loadCycleConfig(undefined);
     setCycleConfig(guestCycle || { mode: "today_to_end" });
@@ -388,6 +402,15 @@ export default function Home() {
       });
       return next;
     });
+    setHabitNotes((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (key.startsWith(`${habitId}_`)) {
+          delete next[key];
+        }
+      });
+      return next;
+    });
   };
 
   // Move habit up or down
@@ -417,6 +440,34 @@ export default function Home() {
       });
       return next;
     });
+    setHabitNotes((prev) => {
+      const next = { ...prev };
+      days.forEach((day) => {
+        const key = `${habitId}_${day.dateString}`;
+        delete next[key];
+      });
+      return next;
+    });
+  };
+
+  // Save Note & Completion from HabitNoteModal
+  const handleSaveNote = (completed: boolean, note: string) => {
+    if (!activeNoteTarget) return;
+    const key = `${activeNoteTarget.habit.id}_${activeNoteTarget.day.dateString}`;
+    setCompletions((prev) => ({
+      ...prev,
+      [key]: completed,
+    }));
+    setHabitNotes((prev) => {
+      const next = { ...prev };
+      const trimmed = note.trim();
+      if (trimmed.length > 0) {
+        next[key] = trimmed;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
   };
 
   // Update wellness metric
@@ -435,9 +486,11 @@ export default function Home() {
     if (confirm("តើអ្នកពិតជាចង់កំណត់ទិន្នន័យទម្លាប់ និងការតាមដានឡើងវិញទៅលំនាំដើមមែនទេ?")) {
       saveHabits(DEFAULT_HABITS, user?.id);
       saveCompletions({}, user?.id);
+      saveHabitNotes({}, user?.id);
       saveWellness({}, user?.id);
       setHabits(DEFAULT_HABITS);
       setCompletions({});
+      setHabitNotes({});
       setWellness({});
     }
   };
@@ -451,7 +504,8 @@ export default function Home() {
       days,
       dateRangeLabel,
       excelState.fileName || "habit-tracker-data.xlsx",
-      cycleConfig
+      cycleConfig,
+      habitNotes
     );
   };
 
@@ -462,6 +516,7 @@ export default function Home() {
       cycleConfig,
       habits,
       completions,
+      habitNotes,
       wellness,
       exportedAt: new Date().toISOString(),
     };
@@ -486,6 +541,10 @@ export default function Home() {
         if (parsed.habits && Array.isArray(parsed.habits)) {
           setHabits(parsed.habits);
           if (parsed.completions) setCompletions(parsed.completions);
+          if (parsed.habitNotes) {
+            setHabitNotes(parsed.habitNotes);
+            saveHabitNotes(parsed.habitNotes, user?.id);
+          }
           if (parsed.wellness) setWellness(parsed.wellness);
           if (parsed.cycleConfig) {
             setCycleConfig(parsed.cycleConfig);
@@ -508,6 +567,7 @@ export default function Home() {
   const handleImportFromExcel = (data: {
     habits?: Habit[];
     completions?: HabitCompletionMap;
+    habitNotes?: HabitNotesMap;
     wellness?: WellnessMap;
     cycleConfig?: TrackerCycleConfig;
   }) => {
@@ -518,6 +578,10 @@ export default function Home() {
     if (data.completions) {
       setCompletions(data.completions);
       saveCompletions(data.completions, user?.id);
+    }
+    if (data.habitNotes) {
+      setHabitNotes(data.habitNotes);
+      saveHabitNotes(data.habitNotes, user?.id);
     }
     if (data.wellness) {
       setWellness(data.wellness);
@@ -655,6 +719,8 @@ export default function Home() {
           days={days}
           weeks={weeks}
           completions={completions}
+          habitNotes={habitNotes}
+          onOpenNoteModal={(habit, day) => setActiveNoteTarget({ habit, day })}
           onToggleHabit={handleToggleHabit}
           onDeleteHabit={handleDeleteHabit}
           onEditHabit={(habit) => setEditingHabit(habit)}
@@ -694,12 +760,32 @@ export default function Home() {
         }}
         habits={habits}
         completions={completions}
+        habitNotes={habitNotes}
         wellness={wellness}
         days={days}
         dateRangeLabel={dateRangeLabel}
         cycleConfig={cycleConfig}
         onImportData={handleImportFromExcel}
         canDismiss={true}
+      />
+
+      {/* Habit Note Daily Modal Popup */}
+      <HabitNoteModal
+        isOpen={!!activeNoteTarget}
+        onClose={() => setActiveNoteTarget(null)}
+        habit={activeNoteTarget?.habit || null}
+        day={activeNoteTarget?.day || null}
+        initialCompleted={
+          activeNoteTarget
+            ? !!completions[`${activeNoteTarget.habit.id}_${activeNoteTarget.day.dateString}`]
+            : false
+        }
+        initialNote={
+          activeNoteTarget
+            ? habitNotes[`${activeNoteTarget.habit.id}_${activeNoteTarget.day.dateString}`] || ""
+            : ""
+        }
+        onSave={handleSaveNote}
       />
 
       {/* Add Habit Modal */}

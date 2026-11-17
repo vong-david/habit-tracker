@@ -19,7 +19,7 @@ import {
   parseExcelFileData,
   downloadExcelFile,
 } from "@/lib/excelStorage";
-import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig } from "@/types/habit";
+import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
 
 interface ExcelConnectionModalProps {
   isOpen: boolean;
@@ -27,6 +27,7 @@ interface ExcelConnectionModalProps {
   onConnected: (fileName: string, fileHandle: FileSystemFileHandle | null) => void;
   habits: Habit[];
   completions: HabitCompletionMap;
+  habitNotes?: HabitNotesMap;
   wellness: WellnessMap;
   days: DayInfo[];
   dateRangeLabel: string;
@@ -34,6 +35,7 @@ interface ExcelConnectionModalProps {
   onImportData: (data: {
     habits?: Habit[];
     completions?: HabitCompletionMap;
+    habitNotes?: HabitNotesMap;
     wellness?: WellnessMap;
     cycleConfig?: TrackerCycleConfig;
   }) => void;
@@ -46,6 +48,7 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
   onConnected,
   habits,
   completions,
+  habitNotes,
   wellness,
   days,
   dateRangeLabel,
@@ -81,14 +84,14 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
         });
 
         // Write current habits/data to the new file
-        await writeToExcelFileHandle(handle, habits, completions, wellness, days, dateRangeLabel, cycleConfig);
+        await writeToExcelFileHandle(handle, habits, completions, wellness, days, dateRangeLabel, cycleConfig, habitNotes);
         await saveStoredHandle(handle);
 
         onConnected(handle.name, handle);
         onClose();
       } else {
         // Fallback for browsers without File System API: download the file
-        downloadExcelFile(habits, completions, wellness, days, dateRangeLabel, "habit-tracker-data.xlsx", cycleConfig);
+        downloadExcelFile(habits, completions, wellness, days, dateRangeLabel, "habit-tracker-data.xlsx", cycleConfig, habitNotes);
         onConnected("habit-tracker-data.xlsx", null);
         onClose();
       }

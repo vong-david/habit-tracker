@@ -9,6 +9,7 @@ export interface Habit {
 }
 
 export type HabitCompletionMap = Record<string, boolean>; // key: `${habitId}_${dateString}` (YYYY-MM-DD)
+export type HabitNotesMap = Record<string, string>; // key: `${habitId}_${dateString}` (YYYY-MM-DD)
 
 export interface WellnessData {
   mood?: number; // 1 to 5

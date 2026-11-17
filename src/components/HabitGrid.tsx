@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { Habit, DayInfo, HabitCompletionMap } from "@/types/habit";
-import { Trash2, Check, ArrowLeftRight, Pencil, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
+import { Habit, DayInfo, HabitCompletionMap, HabitNotesMap } from "@/types/habit";
+import { Trash2, Check, ArrowLeftRight, Pencil, ChevronUp, ChevronDown, GripVertical, FileText } from "lucide-react";
 
 interface HabitGridProps {
   habits: Habit[];
   days: DayInfo[];
   weeks: { weekNumber: number; days: DayInfo[] }[];
   completions: HabitCompletionMap;
+  habitNotes?: HabitNotesMap;
   onToggleHabit: (habitId: string, dateString: string) => void;
+  onOpenNoteModal?: (habit: Habit, day: DayInfo) => void;
   onDeleteHabit: (habitId: string) => void;
   onEditHabit: (habit: Habit) => void;
   onMoveHabit: (habitId: string, direction: "up" | "down") => void;
@@ -30,7 +32,9 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
   days,
   weeks,
   completions,
+  habitNotes,
   onToggleHabit,
+  onOpenNoteModal,
   onDeleteHabit,
   onEditHabit,
   onMoveHabit,
@@ -296,12 +300,24 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                   {days.map((day) => {
                     const key = `${habit.id}_${day.dateString}`;
                     const isChecked = !!completions[key];
+                    const note = habitNotes ? habitNotes[key] : "";
 
                     return (
                       <td
                         key={key}
-                        onClick={() => onToggleHabit(habit.id, day.dateString)}
-                        className={`px-0.5 sm:px-1 py-1.5 text-center border-r border-gray-200 dark:border-gray-800/80 cursor-pointer select-none transition-all active:scale-90 ${
+                        onClick={() =>
+                          onOpenNoteModal
+                            ? onOpenNoteModal(habit, day)
+                            : onToggleHabit(habit.id, day.dateString)
+                        }
+                        title={
+                          note
+                            ? `${day.dayOfWeek} ${day.dayNumber}: ${note}`
+                            : isChecked
+                            ? "បានសម្រេច (ចុចដើម្បីបន្ថែមចំណាំ)"
+                            : "ចុចដើម្បី Check ឬកត់ត្រាចំណាំ"
+                        }
+                        className={`px-0.5 sm:px-1 py-1.5 text-center border-r border-gray-200 dark:border-gray-800/80 cursor-pointer select-none transition-all active:scale-95 ${
                           day.isToday
                             ? "bg-emerald-500/10 hover:bg-emerald-500/20"
                             : "hover:bg-gray-100/70 dark:hover:bg-gray-800/40"
@@ -309,13 +325,21 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                       >
                         <div className="flex items-center justify-center">
                           <div
-                            className={`w-5 h-5 rounded flex items-center justify-center transition-all border ${
+                            className={`w-5 h-5 rounded flex items-center justify-center transition-all border relative ${
                               isChecked
                                 ? "bg-emerald-500 border-emerald-500 text-slate-950 font-black shadow-sm"
                                 : "bg-transparent border-gray-300 dark:border-gray-700 hover:border-emerald-500/50"
                             }`}
                           >
                             {isChecked && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+
+                            {/* Tiny Note indicator amber dot */}
+                            {note && (
+                              <span
+                                className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 border border-white dark:border-[#12141c] shadow-sm animate-pulse"
+                                title={`កំណត់ចំណាំ: ${note}`}
+                              />
+                            )}
                           </div>
                         </div>
                       </td>

@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig } from "@/types/habit";
+import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
 
 export interface ExcelStorageState {
   isConnected: boolean;
@@ -91,7 +91,8 @@ export function buildExcelWorkbook(
   wellness: WellnessMap,
   days: DayInfo[],
   label: string,
-  cycleConfig?: TrackerCycleConfig
+  cycleConfig?: TrackerCycleConfig,
+  notes?: HabitNotesMap
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
@@ -111,8 +112,9 @@ export function buildExcelWorkbook(
     const dayCells = days.map((day) => {
       const key = `${habit.id}_${day.dateString}`;
       const isDone = !!completions[key];
+      const note = notes?.[key];
       if (isDone) doneCount++;
-      return isDone ? "✓" : "";
+      return isDone ? (note ? `✓ [${note}]` : "✓") : (note ? `[${note}]` : "");
     });
 
     const rate = days.length > 0 ? Math.round((doneCount / days.length) * 100) : 0;
@@ -144,6 +146,7 @@ export function buildExcelWorkbook(
     exportedAt: new Date().toISOString(),
     habits,
     completions,
+    habitNotes: notes,
     wellness,
     cycleConfig,
   };
@@ -162,9 +165,10 @@ export function generateExcelBuffer(
   wellness: WellnessMap,
   days: DayInfo[],
   label: string,
-  cycleConfig?: TrackerCycleConfig
+  cycleConfig?: TrackerCycleConfig,
+  notes?: HabitNotesMap
 ): any {
-  const wb = buildExcelWorkbook(habits, completions, wellness, days, label, cycleConfig);
+  const wb = buildExcelWorkbook(habits, completions, wellness, days, label, cycleConfig, notes);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return out;
 }
@@ -177,6 +181,7 @@ export async function parseExcelFileData(
 ): Promise<{
   habits?: Habit[];
   completions?: HabitCompletionMap;
+  habitNotes?: HabitNotesMap;
   wellness?: WellnessMap;
   cycleConfig?: TrackerCycleConfig;
 }> {
@@ -193,6 +198,7 @@ export async function parseExcelFileData(
           return {
             habits: parsed.habits,
             completions: parsed.completions || {},
+            habitNotes: parsed.habitNotes || {},
             wellness: parsed.wellness || {},
             cycleConfig: parsed.cycleConfig,
           };
@@ -253,9 +259,10 @@ export async function writeToExcelFileHandle(
   wellness: WellnessMap,
   days: DayInfo[],
   label: string,
-  cycleConfig?: TrackerCycleConfig
+  cycleConfig?: TrackerCycleConfig,
+  notes?: HabitNotesMap
 ): Promise<void> {
-  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig);
+  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes);
   // Request write permission if needed
   // @ts-ignore
   if (fileHandle.createWritable) {
@@ -281,9 +288,10 @@ export function downloadExcelFile(
   days: DayInfo[],
   label: string,
   fileName: string = "habit-tracker-data.xlsx",
-  cycleConfig?: TrackerCycleConfig
+  cycleConfig?: TrackerCycleConfig,
+  notes?: HabitNotesMap
 ): void {
-  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig);
+  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes);
   const blob = new Blob([buffer as any], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
