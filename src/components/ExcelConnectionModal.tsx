@@ -21,6 +21,7 @@ import {
   UnifiedSpendingData,
 } from "@/lib/excelStorage";
 import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
+import { Trade } from "@/types/trading";
 
 interface ExcelConnectionModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ interface ExcelConnectionModalProps {
   dateRangeLabel: string;
   cycleConfig: TrackerCycleConfig;
   spending?: UnifiedSpendingData;
+  trading?: Trade[];
   onImportData: (data: {
     habits?: Habit[];
     completions?: HabitCompletionMap;
@@ -41,6 +43,7 @@ interface ExcelConnectionModalProps {
     wellness?: WellnessMap;
     cycleConfig?: TrackerCycleConfig;
     spending?: UnifiedSpendingData;
+    trading?: Trade[];
   }) => void;
   canDismiss?: boolean;
 }
@@ -57,6 +60,7 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
   dateRangeLabel,
   cycleConfig,
   spending,
+  trading,
   onImportData,
   canDismiss = true,
 }) => {
@@ -88,14 +92,14 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
         });
 
         // Write current habits/data to the new file
-        await writeToExcelFileHandle(handle, habits, completions, wellness, days, dateRangeLabel, cycleConfig, habitNotes, spending);
+        await writeToExcelFileHandle(handle, habits, completions, wellness, days, dateRangeLabel, cycleConfig, habitNotes, spending, trading);
         await saveStoredHandle(handle);
 
         onConnected(handle.name, handle);
         onClose();
       } else {
         // Fallback for browsers without File System API: download the file
-        downloadExcelFile(habits, completions, wellness, days, dateRangeLabel, "habit-tracker-data.xlsx", cycleConfig, habitNotes, spending);
+        downloadExcelFile(habits, completions, wellness, days, dateRangeLabel, "habit-tracker-data.xlsx", cycleConfig, habitNotes, spending, trading);
         onConnected("habit-tracker-data.xlsx", null);
         onClose();
       }
@@ -133,7 +137,7 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
         const buffer = await file.arrayBuffer();
         const parsed = await parseExcelFileData(buffer);
 
-        if (parsed.habits && parsed.habits.length > 0) {
+        if ((parsed.habits && parsed.habits.length > 0) || (parsed.trading && parsed.trading.length > 0) || (parsed.spending && parsed.spending.categories.length > 0)) {
           onImportData(parsed);
         }
 

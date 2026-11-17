@@ -49,6 +49,7 @@ import {
   UnifiedSpendingData,
   parseExcelFileData,
 } from "@/lib/excelStorage";
+import { loadTrades, saveTrades } from "@/lib/tradingStorage";
 import { Header } from "@/components/Header";
 import { SpendingKpiCards } from "@/components/SpendingKpiCards";
 import { SpendingCharts, DailySpendingBarData } from "@/components/SpendingCharts";
@@ -217,6 +218,7 @@ export default function SpendingPage() {
         const currentWellness = loadWellness(user?.id);
         const currentNotes = loadHabitNotes(user?.id);
         const currentCycle = loadCycleConfig(user?.id) || cycleConfig;
+        const currentTrades = loadTrades(user?.id);
 
         await writeToExcelFileHandle(
           excelState.fileHandle!,
@@ -231,7 +233,8 @@ export default function SpendingPage() {
             categories,
             transactions,
             budgetConfig,
-          }
+          },
+          currentTrades
         );
         setExcelState((prev) => ({
           ...prev,
@@ -396,6 +399,7 @@ export default function SpendingPage() {
     const currentWellness = loadWellness(user?.id);
     const currentNotes = loadHabitNotes(user?.id);
     const currentCycle = loadCycleConfig(user?.id) || cycleConfig;
+    const currentTrades = loadTrades(user?.id);
 
     downloadExcelFile(
       currentHabits,
@@ -410,7 +414,8 @@ export default function SpendingPage() {
         categories,
         transactions,
         budgetConfig,
-      }
+      },
+      currentTrades
     );
   };
 
@@ -516,6 +521,9 @@ export default function SpendingPage() {
         setBudgetConfig(data.spending.budgetConfig);
         saveSpendingBudget(data.spending.budgetConfig, user?.id);
       }
+    }
+    if ((data as any).trading && Array.isArray((data as any).trading)) {
+      saveTrades((data as any).trading, user?.id);
     }
   };
 
@@ -727,6 +735,7 @@ export default function SpendingPage() {
           transactions,
           budgetConfig,
         }}
+        trading={loadTrades(user?.id)}
         onImportData={handleImportFromExcel}
         canDismiss={true}
       />

@@ -21,7 +21,7 @@ import { UserProfile, SyncStatus } from "@/types/auth";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 
 interface HeaderProps {
-  activeTab?: "habits" | "spending";
+  activeTab?: "habits" | "spending" | "journal";
   customTitle?: string;
   customSubtitle?: string;
   addButtonLabel?: string;
@@ -90,9 +90,29 @@ export const Header: React.FC<HeaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const monthYearString = getKhmerMonthYear(currentDate);
 
-  const displayTitle = customTitle || (activeTab === "spending" ? "តាមដានការចំណាយ" : "តាមដានទម្លាប់");
-  const displaySubtitle = customSubtitle || (activeTab === "spending" ? "កត់ត្រាការចំណាយប្រចាំថ្ងៃ និងវិភាគថវិកាដោយផ្ទាល់ក្នុង Excel" : "កត់ត្រាទិន្នន័យដោយផ្ទាល់ក្នុងឯកសារ Excel លើម៉ាស៊ីនរបស់អ្នក");
-  const displayAddLabel = addButtonLabel || (activeTab === "spending" ? "បន្ថែមប្រភេទចំណាយ" : "បន្ថែមទម្លាប់ថ្មី");
+  const displayTitle =
+    customTitle ||
+    (activeTab === "journal"
+      ? "Trading Journal"
+      : activeTab === "spending"
+      ? "តាមដានការចំណាយ"
+      : "តាមដានទម្លាប់");
+
+  const displaySubtitle =
+    customSubtitle ||
+    (activeTab === "journal"
+      ? "កំណត់ត្រា និងវិភាគស្ថិតិការជួញដូរប្រចាំថ្ងៃ ព្រមទាំងរូបថត Chart"
+      : activeTab === "spending"
+      ? "កត់ត្រាការចំណាយប្រចាំថ្ងៃ និងវិភាគថវិកាដោយផ្ទាល់ក្នុង Excel"
+      : "កត់ត្រាទិន្នន័យដោយផ្ទាល់ក្នុងឯកសារ Excel លើម៉ាស៊ីនរបស់អ្នក");
+
+  const displayAddLabel =
+    addButtonLabel ||
+    (activeTab === "journal"
+      ? "កត់ត្រា Trade ថ្មី"
+      : activeTab === "spending"
+      ? "បន្ថែមប្រភេទចំណាយ"
+      : "បន្ថែមទម្លាប់ថ្មី");
 
   return (
     <header className="bg-white dark:bg-[#12141c] border-b border-gray-200 dark:border-gray-800/80 px-3 sm:px-6 py-3.5 shadow-sm transition-colors sticky top-0 z-30 backdrop-blur-md bg-white/95 dark:bg-[#12141c]/95">
@@ -103,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand & Page Navigation Tabs */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-black tracking-wider text-xs sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
-              {activeTab === "spending" ? "💰" : "HT"}
+              {activeTab === "journal" ? "📈" : activeTab === "spending" ? "💰" : "HT"}
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -117,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
               </p>
             </div>
 
-            {/* Navigation Tabs (Habit Tracker vs Daily Spending) */}
+            {/* Navigation Tabs (Habit Tracker vs Daily Spending vs Trading Journal) */}
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-xl border border-gray-200 dark:border-gray-800 text-xs ml-1 sm:ml-2">
               <Link
                 href="/"
@@ -128,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <span>🎯 ទម្លាប់</span>
-                <span className="hidden md:inline text-[10px] opacity-80">(Habits)</span>
+                <span className="hidden lg:inline text-[10px] opacity-80">(Habits)</span>
               </Link>
 
               <Link
@@ -140,7 +160,18 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <span>💰 ចំណាយ</span>
-                <span className="hidden md:inline text-[10px] opacity-80">(Spending)</span>
+                <span className="hidden lg:inline text-[10px] opacity-80">(Spending)</span>
+              </Link>
+
+              <Link
+                href="/journal"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                  activeTab === "journal"
+                    ? "bg-emerald-500 text-slate-950 shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
+              >
+                <span>📈 Trading Journal</span>
               </Link>
             </div>
           </div>

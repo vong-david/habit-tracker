@@ -40,6 +40,7 @@ import {
   saveSpendingTransactions,
   saveSpendingBudget,
 } from "@/lib/spendingStorage";
+import { loadTrades, saveTrades } from "@/lib/tradingStorage";
 import { Header } from "@/components/Header";
 import { DailyProgressBarChart, DailyProgressData } from "@/components/DailyProgressBarChart";
 import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
@@ -216,6 +217,7 @@ export default function Home() {
           transactions: loadSpendingTransactions(user?.id),
           budgetConfig: loadSpendingBudget(user?.id),
         };
+        const currentTrades = loadTrades(user?.id);
         await writeToExcelFileHandle(
           excelState.fileHandle!,
           habits,
@@ -225,7 +227,8 @@ export default function Home() {
           dateRangeLabel,
           cycleConfig,
           habitNotes,
-          spendingData
+          spendingData,
+          currentTrades
         );
         setExcelState((prev) => ({
           ...prev,
@@ -517,6 +520,7 @@ export default function Home() {
       transactions: loadSpendingTransactions(user?.id),
       budgetConfig: loadSpendingBudget(user?.id),
     };
+    const currentTrades = loadTrades(user?.id);
     downloadExcelFile(
       habits,
       completions,
@@ -526,7 +530,8 @@ export default function Home() {
       excelState.fileName || "habit-and-spending-data.xlsx",
       cycleConfig,
       habitNotes,
-      spendingData
+      spendingData,
+      currentTrades
     );
   };
 
@@ -602,6 +607,7 @@ export default function Home() {
     wellness?: WellnessMap;
     cycleConfig?: TrackerCycleConfig;
     spending?: UnifiedSpendingData;
+    trading?: any[];
   }) => {
     if (data.habits && data.habits.length > 0) {
       setHabits(data.habits);
@@ -627,6 +633,9 @@ export default function Home() {
       if (data.spending.categories) saveSpendingCategories(data.spending.categories, user?.id);
       if (data.spending.transactions) saveSpendingTransactions(data.spending.transactions, user?.id);
       if (data.spending.budgetConfig) saveSpendingBudget(data.spending.budgetConfig, user?.id);
+    }
+    if (data.trading && Array.isArray(data.trading)) {
+      saveTrades(data.trading, user?.id);
     }
   };
 
@@ -808,6 +817,7 @@ export default function Home() {
           transactions: loadSpendingTransactions(user?.id),
           budgetConfig: loadSpendingBudget(user?.id),
         }}
+        trading={loadTrades(user?.id)}
         onImportData={handleImportFromExcel}
         canDismiss={true}
       />

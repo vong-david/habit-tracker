@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
 import { SpendingCategory, SpendingTransaction, SpendingBudgetConfig } from "@/types/spending";
+import { Trade } from "@/types/trading";
 
 export interface UnifiedSpendingData {
   categories: SpendingCategory[];
@@ -100,7 +101,8 @@ export function buildExcelWorkbook(
   label: string,
   cycleConfig?: TrackerCycleConfig,
   notes?: HabitNotesMap,
-  spending?: UnifiedSpendingData
+  spending?: UnifiedSpendingData,
+  trading?: Trade[]
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
@@ -279,9 +281,61 @@ export function buildExcelWorkbook(
     XLSX.utils.book_append_sheet(wb, logSheet, "Transactions Log");
   }
 
-  // 5. Sheet: System Data Backup (Stores structured JSON in cell A1 for lossless re-import)
+  // 5. Sheet: Trading Journal (if trading data provided)
+  if (trading && trading.length > 0) {
+    const tradeHeader = [
+      "ID",
+      "កាលបរិច្ឆេទ (Date)",
+      "ម៉ោង (Time)",
+      "និមិត្តសញ្ញា (Symbol)",
+      "ទិសដៅ (Direction)",
+      "លទ្ធផល (Outcome)",
+      "ចំណេញ/ខាត ($ USD)",
+      "ចំណេញ/ខាត (៛ KHR @ 4000)",
+      "ចំនួនកុងត្រា (Qty)",
+      "តម្លៃចូល (Entry)",
+      "តម្លៃចេញ (Exit)",
+      "Setup",
+      "វិន័យ/កំហុស (Mistake/Rules)",
+      "កំណត់ចំណាំ (Notes)",
+      "រូបភាព Chart (Screenshots)",
+      "កាលបរិច្ឆេទបង្កើត",
+    ];
+
+    const sortedTrades = [...trading].sort((a, b) => b.dateString.localeCompare(a.dateString));
+    const tradeRows = sortedTrades.map((t) => {
+      const khrPnl = Math.round(t.pnl * 4000);
+      return [
+        t.id,
+        t.dateString,
+        t.time || "",
+        t.symbol,
+        t.direction,
+        t.outcome,
+        t.pnl >= 0 ? `+$${t.pnl.toFixed(2)}` : `-$${Math.abs(t.pnl).toFixed(2)}`,
+        t.pnl >= 0 ? `+${khrPnl.toLocaleString()} ៛` : `-${Math.abs(khrPnl).toLocaleString()} ៛`,
+        t.quantity !== undefined ? t.quantity : "-",
+        t.entryPrice !== undefined ? t.entryPrice : "-",
+        t.exitPrice !== undefined ? t.exitPrice : "-",
+        t.setup || "",
+        t.mistake || "",
+        t.notes || "",
+        t.imageUrls && t.imageUrls.length > 0 ? `${t.imageUrls.length} រូប` : "គ្មាន",
+        t.createdAt || "",
+      ];
+    });
+
+    const tradeSheet = XLSX.utils.aoa_to_sheet([
+      [`Trading Journal Log - ${label}`, ...new Array(tradeHeader.length - 1).fill("")],
+      tradeHeader,
+      ...tradeRows,
+    ]);
+    XLSX.utils.book_append_sheet(wb, tradeSheet, "Trading Journal");
+  }
+
+  // 6. Sheet: System Data Backup (Stores structured JSON in cell A1 for lossless re-import)
   const systemData = {
-    version: "unified_v1",
+    version: "unified_v2",
     exportedAt: new Date().toISOString(),
     exchangeRate: 4000,
     habits,
@@ -290,6 +344,7 @@ export function buildExcelWorkbook(
     wellness,
     cycleConfig,
     spending: spending || undefined,
+    trading: trading || undefined,
   };
   const systemSheet = XLSX.utils.aoa_to_sheet([
     ["__HABIT_AND_SPENDING_JSON_DATA__"],
@@ -311,15 +366,16 @@ export function generateExcelBuffer(
   label: string,
   cycleConfig?: TrackerCycleConfig,
   notes?: HabitNotesMap,
-  spending?: UnifiedSpendingData
+  spending?: UnifiedSpendingData,
+  trading?: Trade[]
 ): any {
-  const wb = buildExcelWorkbook(habits, completions, wellness, days, label, cycleConfig, notes, spending);
+  const wb = buildExcelWorkbook(habits, completions, wellness, days, label, cycleConfig, notes, spending, trading);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return out;
 }
 
 /**
- * Parse an Excel file (.xlsx) into Habit & Spending Tracker data
+ * Parse an Excel file (.xlsx) into Habit, Spending & Trading Tracker data
  */
 export async function parseExcelFileData(
   arrayBuffer: ArrayBuffer
@@ -330,6 +386,7 @@ export async function parseExcelFileData(
   wellness?: WellnessMap;
   cycleConfig?: TrackerCycleConfig;
   spending?: UnifiedSpendingData;
+  trading?: Trade[];
 }> {
   const wb = XLSX.read(arrayBuffer, { type: "array" });
 
@@ -348,6 +405,7 @@ export async function parseExcelFileData(
             wellness: parsed.wellness || {},
             cycleConfig: parsed.cycleConfig,
             spending: parsed.spending || undefined,
+            trading: parsed.trading || undefined,
           };
         }
       }
@@ -408,9 +466,10 @@ export async function writeToExcelFileHandle(
   label: string,
   cycleConfig?: TrackerCycleConfig,
   notes?: HabitNotesMap,
-  spending?: UnifiedSpendingData
+  spending?: UnifiedSpendingData,
+  trading?: Trade[]
 ): Promise<void> {
-  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes, spending);
+  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes, spending, trading);
   // Request write permission if needed
   // @ts-ignore
   if (fileHandle.createWritable) {
@@ -435,12 +494,13 @@ export function downloadExcelFile(
   wellness: WellnessMap,
   days: DayInfo[],
   label: string,
-  fileName: string = "habit-and-spending-data.xlsx",
+  fileName: string = "habit-spending-and-trading-data.xlsx",
   cycleConfig?: TrackerCycleConfig,
   notes?: HabitNotesMap,
-  spending?: UnifiedSpendingData
+  spending?: UnifiedSpendingData,
+  trading?: Trade[]
 ): void {
-  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes, spending);
+  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes, spending, trading);
   const blob = new Blob([buffer as any], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
