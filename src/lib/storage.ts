@@ -1,4 +1,4 @@
-import { Habit, HabitCompletionMap, WellnessMap } from "@/types/habit";
+import { Habit, HabitCompletionMap, WellnessMap, TrackerCycleConfig } from "@/types/habit";
 
 export const DEFAULT_HABITS: Habit[] = [
   { id: "1", name: "ក្រោកពីគេងម៉ោង 6:00 ព្រឹក", icon: "⏰", category: "ពេលព្រឹក", createdAt: new Date().toISOString() },
@@ -123,5 +123,28 @@ export function saveWellness(wellness: WellnessMap, userId?: string): void {
     localStorage.setItem(key, JSON.stringify(wellness));
   } catch (e) {
     console.error("Failed to save wellness to localStorage", e);
+  }
+}
+
+const BASE_CYCLE_CONFIG_KEY = "habit_tracker_cycle_config_v1";
+
+export function loadCycleConfig(userId?: string): TrackerCycleConfig {
+  if (typeof window === "undefined") return { mode: "calendar_month" };
+  const key = getScopedKey(BASE_CYCLE_CONFIG_KEY, userId);
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : { mode: "calendar_month" };
+  } catch {
+    return { mode: "calendar_month" };
+  }
+}
+
+export function saveCycleConfig(config: TrackerCycleConfig, userId?: string): void {
+  if (typeof window === "undefined") return;
+  const key = getScopedKey(BASE_CYCLE_CONFIG_KEY, userId);
+  try {
+    localStorage.setItem(key, JSON.stringify(config));
+  } catch (e) {
+    console.error("Failed to save cycle config", e);
   }
 }

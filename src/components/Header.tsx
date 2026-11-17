@@ -9,6 +9,7 @@ import {
   Upload,
   RotateCcw,
   Calendar,
+  CalendarDays,
   CheckCircle2,
   Sun,
   Moon,
@@ -19,6 +20,9 @@ import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 
 interface HeaderProps {
   currentDate: Date;
+  dateRangeLabel?: string;
+  isCustomCycle?: boolean;
+  onOpenStartingDayModal?: () => void;
   theme: "dark" | "light";
   onToggleTheme: () => void;
   user: UserProfile | null;
@@ -40,6 +44,9 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   currentDate,
+  dateRangeLabel,
+  isCustomCycle = false,
+  onOpenStartingDayModal,
   theme,
   onToggleTheme,
   user,
@@ -85,35 +92,57 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Month Navigator */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-lg border border-gray-200 dark:border-gray-800 text-xs sm:text-sm">
-            <button
-              onClick={onPrevMonth}
-              className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
-              title="ខែមុន"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+          {/* Month / Cycle Navigator */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-lg border border-gray-200 dark:border-gray-800 text-xs sm:text-sm">
+              <button
+                onClick={onPrevMonth}
+                className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
+                title={isCustomCycle ? "វដ្តមុន" : "ខែមុន"}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
 
-            <span className="font-semibold text-gray-800 dark:text-white px-2 sm:px-3 text-center min-w-[105px] sm:min-w-[125px] select-none text-xs sm:text-sm">
-              {monthYearString}
-            </span>
+              <span className="font-semibold text-gray-800 dark:text-white px-2 sm:px-3 text-center min-w-[105px] sm:min-w-[135px] select-none text-xs sm:text-sm">
+                {dateRangeLabel || monthYearString}
+              </span>
 
-            <button
-              onClick={onNextMonth}
-              className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
-              title="ខែបន្ទាប់"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+              <button
+                onClick={onNextMonth}
+                className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
+                title={isCustomCycle ? "វដ្តបន្ទាប់" : "ខែបន្ទាប់"}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
 
-            <button
-              onClick={onGoToToday}
-              className="ml-0.5 px-2 py-1 text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors flex items-center gap-1"
-            >
-              <Calendar className="w-3 h-3" />
-              <span>ថ្ងៃនេះ</span>
-            </button>
+              <button
+                onClick={onGoToToday}
+                className="ml-0.5 px-2 py-1 text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors flex items-center gap-1"
+                title="ត្រឡប់មកថ្ងៃនេះវិញ"
+              >
+                <Calendar className="w-3 h-3" />
+                <span>ថ្ងៃនេះ</span>
+              </button>
+            </div>
+
+            {/* Starting Day & Cycle Configuration Button */}
+            {onOpenStartingDayModal && (
+              <button
+                onClick={onOpenStartingDayModal}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-sm ${
+                  isCustomCycle
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+                    : "bg-white dark:bg-[#181a24] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-emerald-500/40"
+                }`}
+                title="កំណត់ថ្ងៃចាប់ផ្តើម និងចំនួនថ្ងៃតាមដាន"
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="hidden sm:inline">ថ្ងៃចាប់ផ្តើម</span>
+                {isCustomCycle && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                )}
+              </button>
+            )}
           </div>
 
           {/* Right Section: Google Sign-in & Theme Switcher */}
@@ -139,7 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </>
               ) : (
                 <>
-                  <Moon className="w-4 h-4 text-indigo-500" />
+                  <Moon className="w-4 h-4 text-slate-700" />
                   <span className="hidden sm:inline text-xs font-medium">ងងឹត</span>
                 </>
               )}
@@ -147,49 +176,36 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Lower Row: Stats & Action Buttons (Mobile Optimized) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1 border-t border-gray-100 dark:border-gray-800/50">
+        {/* Bottom Bar: Action Buttons & Statistics Overview */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-gray-800/60">
           
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
-            <div className="bg-gray-100/80 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800 px-2.5 py-1.5 rounded-lg text-center sm:text-left sm:flex sm:items-center sm:gap-2">
-              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">ទម្លាប់សរុប</div>
-              <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{totalHabits}</div>
-            </div>
-
-            <div className="bg-gray-100/80 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800 px-2.5 py-1.5 rounded-lg text-center sm:text-left sm:flex sm:items-center sm:gap-2">
-              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">ថ្ងៃនេះ</div>
-              <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                {todayPercentage}%
-              </div>
-            </div>
-
-            <div className="bg-gray-100/80 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800 px-2.5 py-1.5 rounded-lg text-center sm:text-left sm:flex sm:items-center sm:gap-2">
-              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">មធ្យមភាគខែ</div>
-              <div className="text-xs sm:text-sm font-bold text-cyan-600 dark:text-cyan-400">{monthAveragePercentage}%</div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0">
+          {/* Action Buttons: Add Habit, Export/Import, Reset */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenAddHabit}
-              className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 text-xs font-bold px-3 py-1.5 sm:py-2 rounded-lg transition-all shadow-sm shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition-all shadow-sm active:scale-95"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>បន្ថែមទម្លាប់</span>
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>បន្ថែមទម្លាប់ថ្មី</span>
             </button>
 
             <button
               onClick={onExportData}
-              title="ទាញយកទិន្នន័យជាឯកសារ JSON Backup"
-              className="p-1.5 sm:px-2.5 sm:py-2 bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg text-xs transition-colors flex items-center gap-1 shrink-0"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 text-xs font-medium transition-colors"
+              title="ទាញយកឯកសារ Backup"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">ទាញយក</span>
+              <Download className="w-3.5 h-3.5 text-gray-500" />
+              <span className="hidden sm:inline">Export JSON</span>
             </button>
 
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 text-xs font-medium transition-colors"
+              title="បញ្ចូលឯកសារ Backup មកវិញ"
+            >
+              <Upload className="w-3.5 h-3.5 text-gray-500" />
+              <span className="hidden sm:inline">Import JSON</span>
+            </button>
             <input
               type="file"
               ref={fileInputRef}
@@ -199,21 +215,34 @@ export const Header: React.FC<HeaderProps> = ({
             />
 
             <button
-              onClick={() => fileInputRef.current?.click()}
-              title="បញ្ចូលទិន្នន័យពីឯកសារ Backup"
-              className="p-1.5 sm:px-2.5 sm:py-2 bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg text-xs transition-colors flex items-center gap-1 shrink-0"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">បញ្ចូល</span>
-            </button>
-
-            <button
               onClick={onResetData}
+              className="p-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-500 hover:text-red-500 border border-gray-200 dark:border-gray-800 transition-colors"
               title="កំណត់ទិន្នន័យឡើងវិញទៅលំនាំដើម"
-              className="p-1.5 sm:p-2 bg-gray-100 dark:bg-[#181a24] hover:bg-red-500/10 hover:text-red-500 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:border-red-500/30 rounded-lg text-xs transition-colors shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
+          </div>
+
+          {/* Quick Statistics Overview Pills */}
+          <div className="flex items-center gap-2 sm:gap-3 text-xs">
+            {/* Total Habits */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800">
+              <span className="text-gray-500 dark:text-gray-400">សរុប:</span>
+              <span className="font-bold text-gray-900 dark:text-white">{totalHabits} ទម្លាប់</span>
+            </div>
+
+            {/* Today's Rate */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">ថ្ងៃនេះ:</span>
+              <span className="font-extrabold">{todayPercentage}%</span>
+            </div>
+
+            {/* Cycle / Month Average Rate */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-400">
+              <span className="hidden sm:inline">{isCustomCycle ? "មធ្យមវដ្ត:" : "មធ្យមខែ:"}</span>
+              <span className="font-extrabold">{monthAveragePercentage}%</span>
+            </div>
           </div>
 
         </div>

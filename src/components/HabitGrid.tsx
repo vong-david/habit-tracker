@@ -80,6 +80,7 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                 return (
                   <th
                     key={`dow-${day.dateString}`}
+                    title={`${day.dayOfWeek} ទី ${day.dayNumber} ${day.monthName}`}
                     className={`px-1 py-1 text-center font-semibold border-r border-gray-200 dark:border-gray-800/80 min-w-[32px] sm:min-w-[36px] ${
                       day.isToday
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
@@ -107,6 +108,7 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
               {days.map((day) => (
                 <th
                   key={`num-${day.dateString}`}
+                  title={`${day.dayNumber} ${day.monthName}`}
                   className={`px-1 py-1 text-center font-bold border-r border-gray-200 dark:border-gray-800 min-w-[32px] sm:min-w-[36px] ${
                     day.isToday
                       ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black"

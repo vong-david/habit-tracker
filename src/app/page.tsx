@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Habit, HabitCompletionMap, WellnessMap } from "@/types/habit";
+import { Habit, HabitCompletionMap, WellnessMap, TrackerCycleConfig } from "@/types/habit";
 import { UserProfile, SyncStatus } from "@/types/auth";
 import { getStoredUser, saveUserSession } from "@/lib/auth";
 import {
@@ -12,25 +12,26 @@ import {
   saveCompletions,
   loadWellness,
   saveWellness,
+  loadCycleConfig,
+  saveCycleConfig,
 } from "@/lib/storage";
-import { getDaysInMonth, groupDaysByWeek, getKhmerMonthYear } from "@/lib/dateUtils";
+import {
+  getDaysInMonth,
+  getDaysForCycle,
+  groupDaysByWeek,
+  getKhmerMonthYear,
+  getKhmerDateRangeLabel,
+  toKhmerNum,
+} from "@/lib/dateUtils";
 import { syncHabitDataToSheet } from "@/lib/googleSheets";
 import { Header } from "@/components/Header";
-import { DailyProgressBarChart } from "@/components/DailyProgressBarChart";
+import { DailyProgressBarChart, DailyProgressData } from "@/components/DailyProgressBarChart";
 import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
 import { HabitGrid } from "@/components/HabitGrid";
 import { WellnessTracker } from "@/components/WellnessTracker";
 import { AddHabitModal } from "@/components/AddHabitModal";
 import { EditHabitModal } from "@/components/EditHabitModal";
-
-const KHMER_NUMBERS = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
-function toKhmerNum(num: number): string {
-  return num
-    .toString()
-    .split("")
-    .map((d) => KHMER_NUMBERS[parseInt(d, 10)] || d)
-    .join("");
-}
+import { StartingDayModal } from "@/components/StartingDayModal";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -38,6 +39,12 @@ export default function Home() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  
+  // Custom Cycle State
+  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "calendar_month" });
+  const [customCycleStartDate, setCustomCycleStartDate] = useState<Date>(new Date());
+  const [isStartingDayModalOpen, setIsStartingDayModalOpen] = useState(false);
+
   const [habits, setHabits] = useState<Habit[]>(DEFAULT_HABITS);
   const [completions, setCompletions] = useState<HabitCompletionMap>({});
   const [wellness, setWellness] = useState<WellnessMap>({});
@@ -54,6 +61,16 @@ export default function Home() {
     setHabits(loadHabits(userId));
     setCompletions(loadCompletions(userId));
     setWellness(loadWellness(userId));
+
+    // Load cycle configuration
+    const savedCycle = loadCycleConfig(userId);
+    setCycleConfig(savedCycle);
+    if (savedCycle.mode === "custom_start_date" && savedCycle.startDate) {
+      const [y, m, d] = savedCycle.startDate.split("-").map(Number);
+      setCustomCycleStartDate(new Date(y, m - 1, d));
+    } else {
+      setCustomCycleStartDate(new Date());
+    }
 
     const savedTheme = localStorage.getItem("habit_tracker_theme") as "dark" | "light" | null;
     const initialTheme = savedTheme || "dark";
@@ -81,12 +98,29 @@ export default function Home() {
     saveWellness(wellness, user?.id);
   }, [wellness, user?.id, isClient]);
 
-  // Days in current selected month
+  // Calendar Month values
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const days = useMemo(() => getDaysInMonth(year, month), [year, month]);
+  // Days in current selected view (Calendar Month OR Custom Cycle Starting Date)
+  const isCustomCycle = cycleConfig.mode === "custom_start_date";
+
+  const days = useMemo(() => {
+    if (isCustomCycle) {
+      return getDaysForCycle(customCycleStartDate, cycleConfig.durationDays || 30);
+    }
+    return getDaysInMonth(year, month);
+  }, [isCustomCycle, customCycleStartDate, cycleConfig.durationDays, year, month]);
+
   const weeks = useMemo(() => groupDaysByWeek(days), [days]);
+
+  // Date Range Label displayed in Header
+  const dateRangeLabel = useMemo(() => {
+    if (isCustomCycle) {
+      return getKhmerDateRangeLabel(days);
+    }
+    return getKhmerMonthYear(currentDate);
+  }, [isCustomCycle, days, currentDate]);
 
   // Auto-sync debounced to Google Sheet (if user has connected Google Sheets)
   useEffect(() => {
@@ -95,7 +129,6 @@ export default function Home() {
     setSyncStatus("syncing");
     const timer = setTimeout(async () => {
       try {
-        const monthLabel = getKhmerMonthYear(currentDate);
         await syncHabitDataToSheet(
           user.accessToken!,
           user.spreadsheetId!,
@@ -103,7 +136,7 @@ export default function Home() {
           completions,
           wellness,
           days,
-          monthLabel
+          dateRangeLabel
         );
         setSyncStatus("synced");
       } catch (err) {
@@ -113,14 +146,13 @@ export default function Home() {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [habits, completions, wellness, days, currentDate, user, isClient]);
+  }, [habits, completions, wellness, days, dateRangeLabel, user, isClient]);
 
   // Manual sync handler
   const handleManualSync = useCallback(async () => {
     if (!user?.accessToken || !user?.spreadsheetId) return;
     setSyncStatus("syncing");
     try {
-      const monthLabel = getKhmerMonthYear(currentDate);
       await syncHabitDataToSheet(
         user.accessToken,
         user.spreadsheetId,
@@ -128,7 +160,7 @@ export default function Home() {
         completions,
         wellness,
         days,
-        monthLabel
+        dateRangeLabel
       );
       setSyncStatus("synced");
       alert("បាន Sync ទិន្នន័យទៅកាន់ Google Sheets រួចរាល់!");
@@ -137,7 +169,7 @@ export default function Home() {
       setSyncStatus("error");
       alert("មានបញ្ហាក្នុងការ Sync ទៅ Google Sheets។");
     }
-  }, [user, currentDate, habits, completions, wellness, days]);
+  }, [user, dateRangeLabel, habits, completions, wellness, days]);
 
   // Handle Login
   const handleLogin = (newUser: UserProfile) => {
@@ -146,6 +178,12 @@ export default function Home() {
     setHabits(loadHabits(newUser.id));
     setCompletions(loadCompletions(newUser.id));
     setWellness(loadWellness(newUser.id));
+    const userCycle = loadCycleConfig(newUser.id);
+    setCycleConfig(userCycle);
+    if (userCycle.mode === "custom_start_date" && userCycle.startDate) {
+      const [y, m, d] = userCycle.startDate.split("-").map(Number);
+      setCustomCycleStartDate(new Date(y, m - 1, d));
+    }
   };
 
   // Handle Logout
@@ -156,6 +194,8 @@ export default function Home() {
     setHabits(loadHabits(undefined));
     setCompletions(loadCompletions(undefined));
     setWellness(loadWellness(undefined));
+    const guestCycle = loadCycleConfig(undefined);
+    setCycleConfig(guestCycle);
   };
 
   // Theme switcher handler
@@ -170,17 +210,49 @@ export default function Home() {
     }
   };
 
-  // Month navigation handlers
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
+  // Previous Month or Previous Cycle
+  const handlePrevDate = () => {
+    if (isCustomCycle) {
+      const duration = cycleConfig.durationDays || 30;
+      setCustomCycleStartDate(
+        (prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - duration)
+      );
+    } else {
+      setCurrentDate(new Date(year, month - 1, 1));
+    }
   };
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
+  // Next Month or Next Cycle
+  const handleNextDate = () => {
+    if (isCustomCycle) {
+      const duration = cycleConfig.durationDays || 30;
+      setCustomCycleStartDate(
+        (prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + duration)
+      );
+    } else {
+      setCurrentDate(new Date(year, month + 1, 1));
+    }
   };
 
+  // Go to Today
   const handleGoToToday = () => {
-    setCurrentDate(new Date());
+    const now = new Date();
+    setCurrentDate(now);
+    if (isCustomCycle) {
+      setCustomCycleStartDate(now);
+    }
+  };
+
+  // Save Cycle Config
+  const handleSaveCycleConfig = (newConfig: TrackerCycleConfig) => {
+    setCycleConfig(newConfig);
+    saveCycleConfig(newConfig, user?.id);
+    if (newConfig.mode === "custom_start_date" && newConfig.startDate) {
+      const [y, m, d] = newConfig.startDate.split("-").map(Number);
+      setCustomCycleStartDate(new Date(y, m - 1, d));
+    } else {
+      setCurrentDate(new Date());
+    }
   };
 
   // Toggle habit checkbox
@@ -241,7 +313,7 @@ export default function Home() {
     });
   };
 
-  // Clear checks for a habit in current month
+  // Clear checks for a habit in current view
   const handleClearHabitMonthLogs = (habitId: string) => {
     setCompletions((prev) => {
       const next = { ...prev };
@@ -280,6 +352,7 @@ export default function Home() {
   const handleExportData = () => {
     const backup = {
       user: user ? { email: user.email, name: user.name, spreadsheetUrl: user.spreadsheetUrl } : null,
+      cycleConfig,
       habits,
       completions,
       wellness,
@@ -307,6 +380,10 @@ export default function Home() {
           setHabits(parsed.habits);
           if (parsed.completions) setCompletions(parsed.completions);
           if (parsed.wellness) setWellness(parsed.wellness);
+          if (parsed.cycleConfig) {
+            setCycleConfig(parsed.cycleConfig);
+            saveCycleConfig(parsed.cycleConfig, user?.id);
+          }
           alert("ទិន្នន័យត្រូវបាននាំចូល (Import) ដោយជោគជ័យ!");
         } else {
           alert("ឯកសារ Backup មិនត្រឹមត្រូវទេ។");
@@ -321,13 +398,14 @@ export default function Home() {
   };
 
   // Calculate Daily Progress Data for the chart
-  const dailyChartData = useMemo(() => {
+  const dailyChartData: DailyProgressData[] = useMemo(() => {
     const totalHabits = habits.length;
     return days.map((day) => {
       let completedCount = 0;
       habits.forEach((h) => {
         if (completions[`${h.id}_${day.dateString}`]) completedCount++;
       });
+
       const percentage = totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
       return {
@@ -335,6 +413,7 @@ export default function Home() {
         dayLabel: `${day.dayOfWeek} ${day.dayNumber}`,
         dayOfWeek: day.dayOfWeek,
         dayNumber: day.dayNumber,
+        dateString: day.dateString,
         percentage,
         completed: completedCount,
         total: totalHabits,
@@ -345,8 +424,9 @@ export default function Home() {
   // Calculate Weekly Progress Data for the chart
   const weeklyChartData = useMemo(() => {
     const totalHabits = habits.length;
+
     return weeks.map((week) => {
-      let totalPossible = week.days.length * totalHabits;
+      const totalPossible = totalHabits * week.days.length;
       let totalDone = 0;
       week.days.forEach((day) => {
         habits.forEach((h) => {
@@ -401,6 +481,9 @@ export default function Home() {
       {/* 1. Header Bar with Auth, Google Sheets, Theme */}
       <Header
         currentDate={currentDate}
+        dateRangeLabel={dateRangeLabel}
+        isCustomCycle={isCustomCycle}
+        onOpenStartingDayModal={() => setIsStartingDayModalOpen(true)}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         user={user}
@@ -408,8 +491,8 @@ export default function Home() {
         onLogin={handleLogin}
         onLogout={handleLogout}
         onManualSync={handleManualSync}
-        onPrevMonth={handlePrevMonth}
-        onNextMonth={handleNextMonth}
+        onPrevMonth={handlePrevDate}
+        onNextMonth={handleNextDate}
         onGoToToday={handleGoToToday}
         onOpenAddHabit={() => setIsAddModalOpen(true)}
         onResetData={handleResetData}
@@ -450,6 +533,14 @@ export default function Home() {
           onUpdateWellness={handleUpdateWellness}
         />
       </main>
+
+      {/* Starting Day & Cycle Configuration Modal */}
+      <StartingDayModal
+        isOpen={isStartingDayModalOpen}
+        onClose={() => setIsStartingDayModalOpen(false)}
+        cycleConfig={cycleConfig}
+        onSaveCycleConfig={handleSaveCycleConfig}
+      />
 
       {/* Add Habit Modal */}
       <AddHabitModal

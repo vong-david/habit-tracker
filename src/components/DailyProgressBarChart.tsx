@@ -13,11 +13,12 @@ import {
 } from "recharts";
 import { DayInfo } from "@/types/habit";
 
-interface DailyProgressData {
+export interface DailyProgressData {
   dayInfo: DayInfo;
   dayLabel: string;
   dayOfWeek: string;
   dayNumber: number;
+  dateString: string;
   percentage: number;
   completed: number;
   total: number;
@@ -66,12 +67,12 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
               tickLine={false}
             />
             <XAxis
-              dataKey="dayNumber"
+              dataKey="dateString"
               interval={0}
               tickLine={false}
               axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
               tick={({ x, y, payload }) => {
-                const item = data.find((d) => d.dayNumber === payload.value);
+                const item = data.find((d) => d.dateString === payload.value || d.dayInfo.dateString === payload.value);
                 const isToday = item?.dayInfo.isToday;
                 return (
                   <g transform={`translate(${x},${y})`}>
@@ -95,7 +96,7 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
                       fontSize={8}
                       fontWeight={isToday ? "bold" : "500"}
                     >
-                      {payload.value}
+                      {item?.dayNumber ?? payload.value}
                     </text>
                   </g>
                 );
