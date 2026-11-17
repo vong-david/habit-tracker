@@ -676,6 +676,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#090a0f] text-gray-900 dark:text-gray-100 flex flex-col pb-12 transition-colors duration-200">
       {/* 1. Header Bar with Local Excel Storage, Google Auth, Theme */}
       <Header
+        activeTab="habits"
         currentDate={currentDate}
         dateRangeLabel={dateRangeLabel}
         isCustomCycle={isCustomCycle}

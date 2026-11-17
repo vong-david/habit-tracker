@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,10 @@ import { UserProfile, SyncStatus } from "@/types/auth";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 
 interface HeaderProps {
+  activeTab?: "habits" | "spending";
+  customTitle?: string;
+  customSubtitle?: string;
+  addButtonLabel?: string;
   currentDate: Date;
   dateRangeLabel?: string;
   isCustomCycle?: boolean;
@@ -45,12 +50,17 @@ interface HeaderProps {
   onResetData: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  totalHabits: number;
-  todayPercentage: number;
-  monthAveragePercentage: number;
+  totalHabits?: number;
+  todayPercentage?: number;
+  monthAveragePercentage?: number;
+  statPills?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  activeTab = "habits",
+  customTitle,
+  customSubtitle,
+  addButtonLabel,
   currentDate,
   dateRangeLabel,
   isCustomCycle = false,
@@ -72,34 +82,66 @@ export const Header: React.FC<HeaderProps> = ({
   onResetData,
   onExportData,
   onImportData,
-  totalHabits,
-  todayPercentage,
-  monthAveragePercentage,
+  totalHabits = 0,
+  todayPercentage = 0,
+  monthAveragePercentage = 0,
+  statPills,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const monthYearString = getKhmerMonthYear(currentDate);
+
+  const displayTitle = customTitle || (activeTab === "spending" ? "តាមដានការចំណាយ" : "តាមដានទម្លាប់");
+  const displaySubtitle = customSubtitle || (activeTab === "spending" ? "កត់ត្រាការចំណាយប្រចាំថ្ងៃ និងវិភាគថវិកាដោយផ្ទាល់ក្នុង Excel" : "កត់ត្រាទិន្នន័យដោយផ្ទាល់ក្នុងឯកសារ Excel លើម៉ាស៊ីនរបស់អ្នក");
+  const displayAddLabel = addButtonLabel || (activeTab === "spending" ? "បន្ថែមប្រភេទចំណាយ" : "បន្ថែមទម្លាប់ថ្មី");
 
   return (
     <header className="bg-white dark:bg-[#12141c] border-b border-gray-200 dark:border-gray-800/80 px-3 sm:px-6 py-3.5 shadow-sm transition-colors sticky top-0 z-30 backdrop-blur-md bg-white/95 dark:bg-[#12141c]/95">
       <div className="max-w-[1700px] mx-auto flex flex-col gap-3.5">
         
-        {/* Top Bar: Brand, Month Navigator, Excel Storage, Auth, Theme */}
+        {/* Top Bar: Brand, Navigation Switcher, Month Navigator, Excel Storage, Auth, Theme */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5">
+          {/* Brand & Page Navigation Tabs */}
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-black tracking-wider text-xs sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
-              HT
+              {activeTab === "spending" ? "💰" : "HT"}
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
-                <span>តាមដានទម្លាប់</span>
+                <span>{displayTitle}</span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hidden xs:inline-block">
                   Excel Storage (.xlsx)
                 </span>
               </h1>
               <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                កត់ត្រាទិន្នន័យដោយផ្ទាល់ក្នុងឯកសារ Excel លើម៉ាស៊ីនរបស់អ្នក
+                {displaySubtitle}
               </p>
+            </div>
+
+            {/* Navigation Tabs (Habit Tracker vs Daily Spending) */}
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-xl border border-gray-200 dark:border-gray-800 text-xs ml-1 sm:ml-2">
+              <Link
+                href="/"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                  activeTab === "habits"
+                    ? "bg-emerald-500 text-slate-950 shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
+              >
+                <span>🎯 ទម្លាប់</span>
+                <span className="hidden md:inline text-[10px] opacity-80">(Habits)</span>
+              </Link>
+
+              <Link
+                href="/spending"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                  activeTab === "spending"
+                    ? "bg-emerald-500 text-slate-950 shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
+              >
+                <span>💰 ចំណាយ</span>
+                <span className="hidden md:inline text-[10px] opacity-80">(Spending)</span>
+              </Link>
             </div>
           </div>
 
@@ -229,7 +271,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition-all shadow-sm active:scale-95"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
-              <span>បន្ថែមទម្លាប់ថ្មី</span>
+              <span>{displayAddLabel}</span>
             </button>
 
             {/* Direct Export to Excel (.xlsx) */}
@@ -279,26 +321,30 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Quick Statistics Overview Pills */}
-          <div className="flex items-center gap-2 sm:gap-3 text-xs">
-            {/* Total Habits */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800">
-              <span className="text-gray-500 dark:text-gray-400">សរុប:</span>
-              <span className="font-bold text-gray-900 dark:text-white">{totalHabits} ទម្លាប់</span>
-            </div>
+          {statPills ? (
+            statPills
+          ) : (
+            <div className="flex items-center gap-2 sm:gap-3 text-xs">
+              {/* Total Habits */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800">
+                <span className="text-gray-500 dark:text-gray-400">សរុប:</span>
+                <span className="font-bold text-gray-900 dark:text-white">{totalHabits} ទម្លាប់</span>
+              </div>
 
-            {/* Today's Rate */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="hidden sm:inline">ថ្ងៃនេះ:</span>
-              <span className="font-extrabold">{todayPercentage}%</span>
-            </div>
+              {/* Today's Rate */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="hidden sm:inline">ថ្ងៃនេះ:</span>
+                <span className="font-extrabold">{todayPercentage}%</span>
+              </div>
 
-            {/* Cycle / Month Average Rate */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-400">
-              <span className="hidden sm:inline">{isCustomCycle ? "មធ្យមវដ្ត:" : "មធ្យមខែ:"}</span>
-              <span className="font-extrabold">{monthAveragePercentage}%</span>
+              {/* Cycle / Month Average Rate */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-400">
+                <span className="hidden sm:inline">{isCustomCycle ? "មធ្យមវដ្ត:" : "មធ្យមខែ:"}</span>
+                <span className="font-extrabold">{monthAveragePercentage}%</span>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
