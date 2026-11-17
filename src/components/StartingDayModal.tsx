@@ -24,23 +24,27 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
     cycleConfig.mode || "today_to_end"
   );
 
-  const today = new Date();
+  const [startDayInput, setStartDayInput] = useState<number>(
+    cycleConfig.startDay || 12
+  );
+
+  // Month information
   const currentMonthDays = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const currentMonthName = KHMER_MONTH_NAMES[currentDate.getMonth()];
   const currentYearKhmer = toKhmerNum(currentDate.getFullYear());
 
-  const [startDayInput, setStartDayInput] = useState<number>(
-    cycleConfig.startDay || today.getDate()
-  );
-
+  // ONLY synchronize when modal opens, NOT on every render!
   useEffect(() => {
     if (isOpen) {
+      const todayDate = new Date().getDate();
       setMode(cycleConfig.mode || "today_to_end");
-      setStartDayInput(cycleConfig.startDay || today.getDate());
+      setStartDayInput(cycleConfig.startDay || todayDate);
     }
-  }, [isOpen, cycleConfig, today]);
+  }, [isOpen]); // Fixed: removed `today` and `cycleConfig` from deps to prevent re-render resets!
 
   if (!isOpen) return null;
+
+  const todayDate = new Date().getDate();
 
   // Calculate live preview text
   const getPreviewText = () => {
@@ -49,14 +53,8 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
     }
 
     if (mode === "today_to_end") {
-      const todayDate = today.getDate();
-      const isViewingCurrentMonth =
-        today.getFullYear() === currentDate.getFullYear() &&
-        today.getMonth() === currentDate.getMonth();
-
-      const effectiveStart = isViewingCurrentMonth ? todayDate : 1;
-      const count = currentMonthDays - effectiveStart + 1;
-      return `បង្ហាញពីថ្ងៃនេះដល់ចុងខែ៖ ពីថ្ងៃទី ${toKhmerNum(effectiveStart)} ដល់ ${toKhmerNum(currentMonthDays)} ${currentMonthName} ${currentYearKhmer} (សរុប ${toKhmerNum(count)} ថ្ងៃ)`;
+      const count = currentMonthDays - todayDate + 1;
+      return `បង្ហាញពីថ្ងៃនេះដល់ចុងខែ៖ ពីថ្ងៃទី ${toKhmerNum(todayDate)} ដល់ ${toKhmerNum(currentMonthDays)} ${currentMonthName} ${currentYearKhmer} (សរុប ${toKhmerNum(count)} ថ្ងៃ)`;
     }
 
     if (mode === "custom_start_day") {
@@ -77,7 +75,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
     if (mode === "today_to_end") {
       onSaveCycleConfig({
         mode: "today_to_end",
-        startDay: today.getDate(),
+        startDay: todayDate,
       });
     } else if (mode === "custom_start_day") {
       onSaveCycleConfig({
@@ -90,7 +88,8 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
         startDay: 1,
       });
     } else if (mode === "consecutive_days") {
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const t = new Date();
+      const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
       onSaveCycleConfig({
         mode: "consecutive_days",
         startDate: todayStr,
@@ -101,7 +100,10 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div
         className="bg-white dark:bg-[#151722] border border-gray-200 dark:border-gray-800 w-full max-w-lg rounded-3xl p-5 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto text-left"
         onClick={(e) => e.stopPropagation()}
@@ -123,6 +125,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
@@ -136,13 +139,21 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
             onClick={() => setMode("today_to_end")}
             className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
               mode === "today_to_end"
-                ? "bg-emerald-500/10 border-emerald-500 text-emerald-800 dark:text-emerald-300 shadow-sm"
+                ? "bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-sm ring-1 ring-emerald-500/50"
                 : "bg-gray-50 dark:bg-[#1a1c28] border-gray-200 dark:border-gray-800 hover:border-emerald-500/40"
             }`}
           >
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 mt-0.5">
-              <Sparkles className="w-5 h-5" />
+            {/* Custom Radio Circle */}
+            <div
+              className={`w-5 h-5 rounded-full border flex items-center justify-center mt-1 shrink-0 transition-colors ${
+                mode === "today_to_end"
+                  ? "border-emerald-500 bg-emerald-500 text-slate-950 font-bold"
+                  : "border-gray-300 dark:border-gray-600 bg-transparent"
+              }`}
+            >
+              {mode === "today_to_end" && <div className="w-2 h-2 rounded-full bg-slate-950" />}
             </div>
+
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -154,7 +165,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
                 {mode === "today_to_end" && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                បង្ហាញចាប់ពី <strong>ថ្ងៃនេះ (ថ្ងៃទី {toKhmerNum(today.getDate())})</strong> ដល់ថ្ងៃចុងខែ <strong>({toKhmerNum(currentMonthDays)} {currentMonthName})</strong>
+                បង្ហាញចាប់ពី <strong>ថ្ងៃនេះ (ថ្ងៃទី {toKhmerNum(todayDate)})</strong> ដល់ថ្ងៃចុងខែ <strong>({toKhmerNum(currentMonthDays)} {currentMonthName})</strong>
               </p>
             </div>
           </div>
@@ -164,14 +175,22 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
             onClick={() => setMode("custom_start_day")}
             className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-3 ${
               mode === "custom_start_day"
-                ? "bg-emerald-500/10 border-emerald-500 text-emerald-800 dark:text-emerald-300 shadow-sm"
+                ? "bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-sm ring-1 ring-emerald-500/50"
                 : "bg-gray-50 dark:bg-[#1a1c28] border-gray-200 dark:border-gray-800 hover:border-emerald-500/40"
             }`}
           >
             <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-500 shrink-0 mt-0.5">
-                <CalendarDays className="w-5 h-5" />
+              {/* Custom Radio Circle */}
+              <div
+                className={`w-5 h-5 rounded-full border flex items-center justify-center mt-1 shrink-0 transition-colors ${
+                  mode === "custom_start_day"
+                    ? "border-emerald-500 bg-emerald-500 text-slate-950 font-bold"
+                    : "border-gray-300 dark:border-gray-600 bg-transparent"
+                }`}
+              >
+                {mode === "custom_start_day" && <div className="w-2 h-2 rounded-full bg-slate-950" />}
               </div>
+
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
@@ -186,7 +205,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
             </div>
 
             {/* Day Selector */}
-            <div className="pt-1 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <div className="pt-1 flex items-center gap-3 pl-8">
               <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 shrink-0">
                 ថ្ងៃទីចាប់ផ្តើម៖
               </label>
@@ -211,22 +230,23 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
             </div>
 
             {/* Quick Day Chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
-              {[1, 5, 10, 12, 15, 20, today.getDate()].filter((v, i, a) => a.indexOf(v) === i).sort((a,b) => a-b).map((d) => (
+            <div className="flex flex-wrap gap-1.5 pt-1 pl-8">
+              {[1, 5, 10, 12, 15, 20, todayDate].filter((v, i, a) => a.indexOf(v) === i).sort((a,b) => a-b).map((d) => (
                 <button
                   type="button"
                   key={d}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setStartDayInput(d);
                     setMode("custom_start_day");
                   }}
                   className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
                     startDayInput === d && mode === "custom_start_day"
-                      ? "bg-emerald-500 text-slate-950 font-bold border-emerald-500"
+                      ? "bg-emerald-500 text-slate-950 font-bold border-emerald-500 shadow-sm"
                       : "bg-white dark:bg-[#12141c] border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-emerald-500"
                   }`}
                 >
-                  ថ្ងៃទី {toKhmerNum(d)} {d === today.getDate() ? "(ថ្ងៃនេះ)" : ""}
+                  ថ្ងៃទី {toKhmerNum(d)} {d === todayDate ? "(ថ្ងៃនេះ)" : ""}
                 </button>
               ))}
             </div>
@@ -237,13 +257,21 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
             onClick={() => setMode("full_month")}
             className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
               mode === "full_month"
-                ? "bg-emerald-500/10 border-emerald-500 text-emerald-800 dark:text-emerald-300 shadow-sm"
+                ? "bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-sm ring-1 ring-emerald-500/50"
                 : "bg-gray-50 dark:bg-[#1a1c28] border-gray-200 dark:border-gray-800 hover:border-emerald-500/40"
             }`}
           >
-            <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-500 shrink-0 mt-0.5">
-              <Calendar className="w-5 h-5" />
+            {/* Custom Radio Circle */}
+            <div
+              className={`w-5 h-5 rounded-full border flex items-center justify-center mt-1 shrink-0 transition-colors ${
+                mode === "full_month"
+                  ? "border-emerald-500 bg-emerald-500 text-slate-950 font-bold"
+                  : "border-gray-300 dark:border-gray-600 bg-transparent"
+              }`}
+            >
+              {mode === "full_month" && <div className="w-2 h-2 rounded-full bg-slate-950" />}
             </div>
+
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
@@ -274,7 +302,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
           <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-xs py-3 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2"
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-slate-950 font-bold text-xs py-3 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>អនុវត្តថ្ងៃចាប់ផ្តើម (Apply)</span>
@@ -286,8 +314,8 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
                 setMode("full_month");
                 setStartDayInput(1);
               }}
-              className="px-3 py-3 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl text-xs text-gray-600 dark:text-gray-400 transition-colors flex items-center gap-1.5"
-              title="កំណត់ឡើងវិញទៅពេញមួយខែ"
+              className="px-3.5 py-3 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl text-xs text-gray-600 dark:text-gray-400 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="ជ្រើសរើសពេញមួយខែ"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">ពេញមួយខែ</span>
