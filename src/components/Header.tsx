@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Sun,
   Moon,
+  FileSpreadsheet,
 } from "lucide-react";
 import { getKhmerMonthYear } from "@/lib/dateUtils";
 import { UserProfile, SyncStatus } from "@/types/auth";
@@ -23,6 +24,13 @@ interface HeaderProps {
   dateRangeLabel?: string;
   isCustomCycle?: boolean;
   onOpenStartingDayModal?: () => void;
+  excelStorageState?: {
+    isConnected: boolean;
+    fileName: string | null;
+    isSyncing?: boolean;
+  };
+  onOpenExcelModal?: () => void;
+  onExportExcel?: () => void;
   theme: "dark" | "light";
   onToggleTheme: () => void;
   user: UserProfile | null;
@@ -47,6 +55,9 @@ export const Header: React.FC<HeaderProps> = ({
   dateRangeLabel,
   isCustomCycle = false,
   onOpenStartingDayModal,
+  excelStorageState,
+  onOpenExcelModal,
+  onExportExcel,
   theme,
   onToggleTheme,
   user,
@@ -72,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-white dark:bg-[#12141c] border-b border-gray-200 dark:border-gray-800/80 px-3 sm:px-6 py-3.5 shadow-sm transition-colors sticky top-0 z-30 backdrop-blur-md bg-white/95 dark:bg-[#12141c]/95">
       <div className="max-w-[1700px] mx-auto flex flex-col gap-3.5">
         
-        {/* Top Bar: Brand, Month Navigator, Auth, Theme */}
+        {/* Top Bar: Brand, Month Navigator, Excel Storage, Auth, Theme */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           {/* Brand */}
           <div className="flex items-center gap-2.5">
@@ -83,11 +94,11 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
                 <span>តាមដានទម្លាប់</span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hidden xs:inline-block">
-                  Google Sheet Storage
+                  Excel Storage (.xlsx)
                 </span>
               </h1>
               <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                កត់ត្រាទិន្នន័យក្នុង Excel Google Sheets ផ្ទាល់ខ្លួន
+                កត់ត្រាទិន្នន័យដោយផ្ទាល់ក្នុងឯកសារ Excel លើម៉ាស៊ីនរបស់អ្នក
               </p>
             </div>
           </div>
@@ -145,8 +156,40 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Right Section: Google Sign-in & Theme Switcher */}
+          {/* Right Section: Local Excel Storage, Google Sign-in, Theme Switcher */}
           <div className="flex items-center gap-2">
+            {/* Local Excel Storage Connection Button */}
+            {onOpenExcelModal && (
+              <button
+                onClick={onOpenExcelModal}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm ${
+                  excelStorageState?.isConnected
+                    ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                    : "bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold active:scale-95"
+                }`}
+                title={
+                  excelStorageState?.isConnected
+                    ? `ឯកសារ Excel: ${excelStorageState.fileName} (ចុចដើម្បីគ្រប់គ្រង)`
+                    : "ភ្ជាប់ឯកសារ Excel (.xlsx) លើម៉ាស៊ីន"
+                }
+              >
+                <FileSpreadsheet
+                  className={`w-4 h-4 ${
+                    excelStorageState?.isConnected ? "text-emerald-500" : "text-slate-950"
+                  }`}
+                />
+                <span className="max-w-[100px] sm:max-w-[130px] truncate">
+                  {excelStorageState?.isConnected
+                    ? excelStorageState.fileName || "Excel Linked"
+                    : "ភ្ជាប់ Excel"}
+                </span>
+                {excelStorageState?.isConnected && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                )}
+              </button>
+            )}
+
+            {/* Google Sign-in (optional) */}
             <GoogleAuthButton
               user={user}
               syncStatus={syncStatus}
@@ -179,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Bottom Bar: Action Buttons & Statistics Overview */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-gray-800/60">
           
-          {/* Action Buttons: Add Habit, Export/Import, Reset */}
+          {/* Action Buttons: Add Habit, Export Excel, Export/Import JSON, Reset */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenAddHabit}
@@ -188,6 +231,18 @@ export const Header: React.FC<HeaderProps> = ({
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>បន្ថែមទម្លាប់ថ្មី</span>
             </button>
+
+            {/* Direct Export to Excel (.xlsx) */}
+            {onExportExcel && (
+              <button
+                onClick={onExportExcel}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-colors"
+                title="ទាញយកទិន្នន័យជាឯកសារ Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Export Excel (.xlsx)</span>
+              </button>
+            )}
 
             <button
               onClick={onExportData}

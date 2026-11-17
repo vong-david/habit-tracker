@@ -24,6 +24,11 @@ import {
   toKhmerNum,
 } from "@/lib/dateUtils";
 import { syncHabitDataToSheet } from "@/lib/googleSheets";
+import {
+  writeToExcelFileHandle,
+  downloadExcelFile,
+  getStoredHandle,
+} from "@/lib/excelStorage";
 import { Header } from "@/components/Header";
 import { DailyProgressBarChart, DailyProgressData } from "@/components/DailyProgressBarChart";
 import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
@@ -32,6 +37,7 @@ import { WellnessTracker } from "@/components/WellnessTracker";
 import { AddHabitModal } from "@/components/AddHabitModal";
 import { EditHabitModal } from "@/components/EditHabitModal";
 import { StartingDayModal } from "@/components/StartingDayModal";
+import { ExcelConnectionModal } from "@/components/ExcelConnectionModal";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -40,6 +46,22 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
+  // Local Excel File Storage State
+  const [excelState, setExcelState] = useState<{
+    isConnected: boolean;
+    fileName: string | null;
+    fileHandle: FileSystemFileHandle | null;
+    lastSyncedAt: string | null;
+    isSyncing: boolean;
+  }>({
+    isConnected: false,
+    fileName: null,
+    fileHandle: null,
+    lastSyncedAt: null,
+    isSyncing: false,
+  });
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+
   // Starting Day / Cycle State (Default to today_to_end)
   const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "today_to_end" });
   const [customCycleStartDate, setCustomCycleStartDate] = useState<Date>(new Date());
@@ -73,6 +95,30 @@ export default function Home() {
     } else {
       setCycleConfig({ mode: "today_to_end" });
     }
+
+    // Check if an Excel File Handle was previously saved
+    getStoredHandle().then(async (handle) => {
+      if (handle) {
+        try {
+          // @ts-ignore
+          const perm = await handle.queryPermission({ mode: "readwrite" });
+          if (perm === "granted") {
+            setExcelState({
+              isConnected: true,
+              fileName: handle.name,
+              fileHandle: handle,
+              lastSyncedAt: new Date().toLocaleTimeString(),
+              isSyncing: false,
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn("Could not query handle permission", e);
+        }
+      }
+      // If no connected Excel file, prompt the user with the Excel Connection modal!
+      setIsExcelModalOpen(true);
+    });
 
     const savedTheme = localStorage.getItem("habit_tracker_theme") as "dark" | "light" | null;
     const initialTheme = savedTheme || "dark";
@@ -118,8 +164,6 @@ export default function Home() {
     }
 
     if (cycleConfig.mode === "today_to_end") {
-      // If viewing current month: start from today up to end of month!
-      // If viewing past or future months: show from day 1 to end of that month!
       const startDay = isViewingCurrentMonth ? today.getDate() : 1;
       return getDaysInMonth(year, month, startDay);
     }
@@ -139,6 +183,36 @@ export default function Home() {
   const dateRangeLabel = useMemo(() => {
     return getKhmerDateRangeLabel(days);
   }, [days]);
+
+  // Auto-sync debounced to linked Local Excel File (.xlsx)
+  useEffect(() => {
+    if (!isClient || !excelState.isConnected || !excelState.fileHandle) return;
+
+    setExcelState((prev) => ({ ...prev, isSyncing: true }));
+    const timer = setTimeout(async () => {
+      try {
+        await writeToExcelFileHandle(
+          excelState.fileHandle!,
+          habits,
+          completions,
+          wellness,
+          days,
+          dateRangeLabel,
+          cycleConfig
+        );
+        setExcelState((prev) => ({
+          ...prev,
+          isSyncing: false,
+          lastSyncedAt: new Date().toLocaleTimeString(),
+        }));
+      } catch (err) {
+        console.warn("Auto-sync to Excel file failed", err);
+        setExcelState((prev) => ({ ...prev, isSyncing: false }));
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [habits, completions, wellness, days, dateRangeLabel, cycleConfig, excelState.isConnected, excelState.fileHandle, isClient]);
 
   // Auto-sync debounced to Google Sheet (if user has connected Google Sheets)
   useEffect(() => {
@@ -368,7 +442,20 @@ export default function Home() {
     }
   };
 
-  // Export JSON
+  // Export Excel (.xlsx)
+  const handleExportExcel = () => {
+    downloadExcelFile(
+      habits,
+      completions,
+      wellness,
+      days,
+      dateRangeLabel,
+      excelState.fileName || "habit-tracker-data.xlsx",
+      cycleConfig
+    );
+  };
+
+  // Export JSON Backup
   const handleExportData = () => {
     const backup = {
       user: user ? { email: user.email, name: user.name, spreadsheetUrl: user.spreadsheetUrl } : null,
@@ -387,7 +474,7 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  // Import JSON
+  // Import JSON Backup
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -415,6 +502,31 @@ export default function Home() {
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  // Import from Excel file
+  const handleImportFromExcel = (data: {
+    habits?: Habit[];
+    completions?: HabitCompletionMap;
+    wellness?: WellnessMap;
+    cycleConfig?: TrackerCycleConfig;
+  }) => {
+    if (data.habits && data.habits.length > 0) {
+      setHabits(data.habits);
+      saveHabits(data.habits, user?.id);
+    }
+    if (data.completions) {
+      setCompletions(data.completions);
+      saveCompletions(data.completions, user?.id);
+    }
+    if (data.wellness) {
+      setWellness(data.wellness);
+      saveWellness(data.wellness, user?.id);
+    }
+    if (data.cycleConfig) {
+      setCycleConfig(data.cycleConfig);
+      saveCycleConfig(data.cycleConfig, user?.id);
+    }
   };
 
   // Calculate Daily Progress Data for the chart
@@ -498,12 +610,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#090a0f] text-gray-900 dark:text-gray-100 flex flex-col pb-12 transition-colors duration-200">
-      {/* 1. Header Bar with Auth, Google Sheets, Theme */}
+      {/* 1. Header Bar with Local Excel Storage, Google Auth, Theme */}
       <Header
         currentDate={currentDate}
         dateRangeLabel={dateRangeLabel}
         isCustomCycle={isCustomCycle}
         onOpenStartingDayModal={() => setIsStartingDayModalOpen(true)}
+        excelStorageState={excelState}
+        onOpenExcelModal={() => setIsExcelModalOpen(true)}
+        onExportExcel={handleExportExcel}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         user={user}
@@ -562,6 +677,29 @@ export default function Home() {
         cycleConfig={cycleConfig}
         onSaveCycleConfig={handleSaveCycleConfig}
         currentDate={currentDate}
+      />
+
+      {/* Local Excel Storage Connection Modal */}
+      <ExcelConnectionModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        onConnected={(fileName, fileHandle) => {
+          setExcelState({
+            isConnected: true,
+            fileName,
+            fileHandle,
+            lastSyncedAt: new Date().toLocaleTimeString(),
+            isSyncing: false,
+          });
+        }}
+        habits={habits}
+        completions={completions}
+        wellness={wellness}
+        days={days}
+        dateRangeLabel={dateRangeLabel}
+        cycleConfig={cycleConfig}
+        onImportData={handleImportFromExcel}
+        canDismiss={true}
       />
 
       {/* Add Habit Modal */}
