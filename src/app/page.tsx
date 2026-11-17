@@ -40,8 +40,8 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
-  // Custom Cycle State
-  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "calendar_month" });
+  // Starting Day / Cycle State (Default to today_to_end)
+  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "today_to_end" });
   const [customCycleStartDate, setCustomCycleStartDate] = useState<Date>(new Date());
   const [isStartingDayModalOpen, setIsStartingDayModalOpen] = useState(false);
 
@@ -62,14 +62,16 @@ export default function Home() {
     setCompletions(loadCompletions(userId));
     setWellness(loadWellness(userId));
 
-    // Load cycle configuration
+    // Load cycle configuration (defaults to today_to_end)
     const savedCycle = loadCycleConfig(userId);
-    setCycleConfig(savedCycle);
-    if (savedCycle.mode === "custom_start_date" && savedCycle.startDate) {
-      const [y, m, d] = savedCycle.startDate.split("-").map(Number);
-      setCustomCycleStartDate(new Date(y, m - 1, d));
+    if (savedCycle && savedCycle.mode) {
+      setCycleConfig(savedCycle);
+      if (savedCycle.startDate) {
+        const [y, m, d] = savedCycle.startDate.split("-").map(Number);
+        setCustomCycleStartDate(new Date(y, m - 1, d));
+      }
     } else {
-      setCustomCycleStartDate(new Date());
+      setCycleConfig({ mode: "today_to_end" });
     }
 
     const savedTheme = localStorage.getItem("habit_tracker_theme") as "dark" | "light" | null;
@@ -102,25 +104,41 @@ export default function Home() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Days in current selected view (Calendar Month OR Custom Cycle Starting Date)
-  const isCustomCycle = cycleConfig.mode === "custom_start_date";
+  // Days in current selected view (Today-to-end, Custom-day-to-end, or Full Month)
+  const isCustomCycle = cycleConfig.mode !== "full_month";
 
   const days = useMemo(() => {
-    if (isCustomCycle) {
+    const today = new Date();
+    const isViewingCurrentMonth =
+      today.getFullYear() === currentDate.getFullYear() &&
+      today.getMonth() === currentDate.getMonth();
+
+    if (cycleConfig.mode === "consecutive_days") {
       return getDaysForCycle(customCycleStartDate, cycleConfig.durationDays || 30);
     }
-    return getDaysInMonth(year, month);
-  }, [isCustomCycle, customCycleStartDate, cycleConfig.durationDays, year, month]);
+
+    if (cycleConfig.mode === "today_to_end") {
+      // If viewing current month: start from today up to end of month!
+      // If viewing past or future months: show from day 1 to end of that month!
+      const startDay = isViewingCurrentMonth ? today.getDate() : 1;
+      return getDaysInMonth(year, month, startDay);
+    }
+
+    if (cycleConfig.mode === "custom_start_day") {
+      const startDay = cycleConfig.startDay || (isViewingCurrentMonth ? today.getDate() : 1);
+      return getDaysInMonth(year, month, startDay);
+    }
+
+    // Default: full_month (from day 1 to end of month)
+    return getDaysInMonth(year, month, 1);
+  }, [cycleConfig, customCycleStartDate, year, month, currentDate]);
 
   const weeks = useMemo(() => groupDaysByWeek(days), [days]);
 
   // Date Range Label displayed in Header
   const dateRangeLabel = useMemo(() => {
-    if (isCustomCycle) {
-      return getKhmerDateRangeLabel(days);
-    }
-    return getKhmerMonthYear(currentDate);
-  }, [isCustomCycle, days, currentDate]);
+    return getKhmerDateRangeLabel(days);
+  }, [days]);
 
   // Auto-sync debounced to Google Sheet (if user has connected Google Sheets)
   useEffect(() => {
@@ -179,10 +197,8 @@ export default function Home() {
     setCompletions(loadCompletions(newUser.id));
     setWellness(loadWellness(newUser.id));
     const userCycle = loadCycleConfig(newUser.id);
-    setCycleConfig(userCycle);
-    if (userCycle.mode === "custom_start_date" && userCycle.startDate) {
-      const [y, m, d] = userCycle.startDate.split("-").map(Number);
-      setCustomCycleStartDate(new Date(y, m - 1, d));
+    if (userCycle && userCycle.mode) {
+      setCycleConfig(userCycle);
     }
   };
 
@@ -195,7 +211,7 @@ export default function Home() {
     setCompletions(loadCompletions(undefined));
     setWellness(loadWellness(undefined));
     const guestCycle = loadCycleConfig(undefined);
-    setCycleConfig(guestCycle);
+    setCycleConfig(guestCycle || { mode: "today_to_end" });
   };
 
   // Theme switcher handler
@@ -210,9 +226,9 @@ export default function Home() {
     }
   };
 
-  // Previous Month or Previous Cycle
+  // Previous Month
   const handlePrevDate = () => {
-    if (isCustomCycle) {
+    if (cycleConfig.mode === "consecutive_days") {
       const duration = cycleConfig.durationDays || 30;
       setCustomCycleStartDate(
         (prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - duration)
@@ -222,9 +238,9 @@ export default function Home() {
     }
   };
 
-  // Next Month or Next Cycle
+  // Next Month
   const handleNextDate = () => {
-    if (isCustomCycle) {
+    if (cycleConfig.mode === "consecutive_days") {
       const duration = cycleConfig.durationDays || 30;
       setCustomCycleStartDate(
         (prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + duration)
@@ -238,7 +254,7 @@ export default function Home() {
   const handleGoToToday = () => {
     const now = new Date();
     setCurrentDate(now);
-    if (isCustomCycle) {
+    if (cycleConfig.mode === "consecutive_days") {
       setCustomCycleStartDate(now);
     }
   };
@@ -247,12 +263,16 @@ export default function Home() {
   const handleSaveCycleConfig = (newConfig: TrackerCycleConfig) => {
     setCycleConfig(newConfig);
     saveCycleConfig(newConfig, user?.id);
-    if (newConfig.mode === "custom_start_date" && newConfig.startDate) {
+    if (newConfig.mode === "consecutive_days" && newConfig.startDate) {
       const [y, m, d] = newConfig.startDate.split("-").map(Number);
       setCustomCycleStartDate(new Date(y, m - 1, d));
-    } else {
-      setCurrentDate(new Date());
     }
+  };
+
+  // Drag and drop reorder habits
+  const handleReorderHabits = (newHabits: Habit[]) => {
+    setHabits(newHabits);
+    saveHabits(newHabits, user?.id);
   };
 
   // Toggle habit checkbox
@@ -514,7 +534,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 3. Middle Habit Grid Table (Mobile Responsive with horizontal scroll) */}
+        {/* 3. Middle Habit Grid Table (Mobile Responsive with Drag and Drop Reordering) */}
         <HabitGrid
           habits={habits}
           days={days}
@@ -524,6 +544,7 @@ export default function Home() {
           onDeleteHabit={handleDeleteHabit}
           onEditHabit={(habit) => setEditingHabit(habit)}
           onMoveHabit={handleMoveHabit}
+          onReorderHabits={handleReorderHabits}
         />
 
         {/* 4. Bottom Overall Wellness Row */}
@@ -540,6 +561,7 @@ export default function Home() {
         onClose={() => setIsStartingDayModalOpen(false)}
         cycleConfig={cycleConfig}
         onSaveCycleConfig={handleSaveCycleConfig}
+        currentDate={currentDate}
       />
 
       {/* Add Habit Modal */}

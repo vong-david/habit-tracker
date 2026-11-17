@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Habit, DayInfo, HabitCompletionMap } from "@/types/habit";
-import { Trash2, Check, ArrowLeftRight, Pencil, ChevronUp, ChevronDown } from "lucide-react";
+import { Trash2, Check, ArrowLeftRight, Pencil, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 
 interface HabitGridProps {
   habits: Habit[];
@@ -13,6 +13,7 @@ interface HabitGridProps {
   onDeleteHabit: (habitId: string) => void;
   onEditHabit: (habit: Habit) => void;
   onMoveHabit: (habitId: string, direction: "up" | "down") => void;
+  onReorderHabits?: (reorderedHabits: Habit[]) => void;
 }
 
 const KHMER_NUMBERS = ["០", "១", "២", "៣", "៤", "៥", "៦", "៧", "៨", "៩"];
@@ -33,7 +34,53 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
   onDeleteHabit,
   onEditHabit,
   onMoveHabit,
+  onReorderHabits,
 }) => {
+  const [draggedHabitId, setDraggedHabitId] = useState<string | null>(null);
+  const [dragOverHabitId, setDragOverHabitId] = useState<string | null>(null);
+
+  // Drag & Drop Handlers
+  const handleDragStart = (e: React.DragEvent, habitId: string) => {
+    setDraggedHabitId(habitId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", habitId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, habitId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverHabitId !== habitId) {
+      setDragOverHabitId(habitId);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetHabitId: string) => {
+    e.preventDefault();
+    if (!draggedHabitId || draggedHabitId === targetHabitId) {
+      setDraggedHabitId(null);
+      setDragOverHabitId(null);
+      return;
+    }
+
+    const sourceIndex = habits.findIndex((h) => h.id === draggedHabitId);
+    const targetIndex = habits.findIndex((h) => h.id === targetHabitId);
+
+    if (sourceIndex !== -1 && targetIndex !== -1 && onReorderHabits) {
+      const copy = [...habits];
+      const [moved] = copy.splice(sourceIndex, 1);
+      copy.splice(targetIndex, 0, moved);
+      onReorderHabits(copy);
+    }
+
+    setDraggedHabitId(null);
+    setDragOverHabitId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedHabitId(null);
+    setDragOverHabitId(null);
+  };
+
   return (
     <div className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm dark:shadow-xl transition-colors">
       {/* Mobile scroll hint */}
@@ -50,8 +97,14 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
           <thead>
             {/* 1. Group Headers: Week 1, Week 2, Week 3, etc. */}
             <tr className="bg-gray-50 dark:bg-[#181a24] text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-800">
-              <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#181a24] px-3 sm:px-4 py-2 sm:py-2.5 text-left font-bold uppercase tracking-wider text-xs border-r border-gray-200 dark:border-gray-800 min-w-[160px] sm:min-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
-                ទម្លាប់ ({habits.length})
+              <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#181a24] px-3 sm:px-4 py-2 sm:py-2.5 text-left font-bold uppercase tracking-wider text-xs border-r border-gray-200 dark:border-gray-800 min-w-[170px] sm:min-w-[240px] shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                <div className="flex items-center justify-between">
+                  <span>ទម្លាប់ ({habits.length})</span>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-normal text-gray-400 dark:text-gray-500 lowercase">
+                    <GripVertical className="w-3 h-3 text-emerald-500" />
+                    អូសរៀបលំដាប់
+                  </span>
+                </div>
               </th>
 
               {weeks.map((week) => (
@@ -99,7 +152,7 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
               </th>
             </tr>
 
-            {/* 3. Sub-Header: Day Numbers (1, 2, 3... 31) */}
+            {/* 3. Sub-Header: Day Numbers */}
             <tr className="bg-gray-200/50 dark:bg-[#10121a] text-gray-700 dark:text-gray-300 border-b-2 border-gray-300 dark:border-gray-700 text-xs">
               <th className="sticky left-0 z-20 bg-gray-200/50 dark:bg-[#10121a] px-3 sm:px-4 py-1 sm:py-1.5 text-left font-semibold border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs">
                 ថ្ងៃទី
@@ -133,16 +186,33 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                 if (completions[key]) completedInMonth++;
               });
               const habitRate = days.length > 0 ? Math.round((completedInMonth / days.length) * 100) : 0;
+              const isBeingDragged = draggedHabitId === habit.id;
+              const isDragOver = dragOverHabitId === habit.id && !isBeingDragged;
 
               return (
                 <tr
                   key={habit.id}
-                  className="hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-colors group"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, habit.id)}
+                  onDragOver={(e) => handleDragOver(e, habit.id)}
+                  onDrop={(e) => handleDrop(e, habit.id)}
+                  onDragEnd={handleDragEnd}
+                  className={`hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-colors group ${
+                    isBeingDragged ? "opacity-35 bg-emerald-500/10" : ""
+                  } ${isDragOver ? "border-t-2 border-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10" : ""}`}
                 >
-                  {/* Left Column: Sticky Habit Info & Actions */}
-                  <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] group-hover:bg-gray-50 dark:group-hover:bg-[#181a24] px-2 sm:px-3 py-1.5 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] transition-colors max-w-[160px] sm:max-w-none">
+                  {/* Left Column: Sticky Habit Info & Drag Handle & Actions */}
+                  <td className="sticky left-0 z-10 bg-white dark:bg-[#12141c] group-hover:bg-gray-50 dark:group-hover:bg-[#181a24] px-2 sm:px-3 py-1.5 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] transition-colors max-w-[170px] sm:max-w-none">
                     <div className="flex items-center justify-between gap-1.5">
                       
+                      {/* Drag Handle */}
+                      <div
+                        className="cursor-grab active:cursor-grabbing p-0.5 text-gray-300 dark:text-gray-600 hover:text-emerald-500 transition-colors shrink-0"
+                        title="ចុចទាញអូសឡើងលើ/ចុះក្រោម ដើម្បីរៀបលំដាប់ (Drag to reorder)"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" />
+                      </div>
+
                       {/* Habit Name & Icon (clickable to edit) */}
                       <div
                         onClick={() => onEditHabit(habit)}
@@ -164,12 +234,15 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
 
                       {/* Action buttons (Edit, Reorder, Delete) */}
                       <div className="flex items-center gap-0.5 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {/* Reorder Up/Down */}
+                        {/* Reorder Up/Down Fallback */}
                         <div className="hidden sm:flex flex-col">
                           <button
                             type="button"
                             disabled={index === 0}
-                            onClick={() => onMoveHabit(habit.id, "up")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoveHabit(habit.id, "up");
+                            }}
                             className="p-0.5 text-gray-400 hover:text-emerald-500 disabled:opacity-20 transition-colors"
                             title="រំកិលឡើងលើ"
                           >
@@ -178,7 +251,10 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                           <button
                             type="button"
                             disabled={index === habits.length - 1}
-                            onClick={() => onMoveHabit(habit.id, "down")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoveHabit(habit.id, "down");
+                            }}
                             className="p-0.5 text-gray-400 hover:text-emerald-500 disabled:opacity-20 transition-colors"
                             title="រំកិលចុះក្រោម"
                           >
@@ -189,7 +265,10 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                         {/* Edit Button */}
                         <button
                           type="button"
-                          onClick={() => onEditHabit(habit)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditHabit(habit);
+                          }}
                           className="p-1 text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                           title="កែប្រែទម្លាប់"
                         >
@@ -199,7 +278,10 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                         {/* Delete Button */}
                         <button
                           type="button"
-                          onClick={() => onDeleteHabit(habit.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteHabit(habit.id);
+                          }}
                           className="p-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                           title="លុបទម្លាប់"
                         >
@@ -229,64 +311,41 @@ export const HabitGrid: React.FC<HabitGridProps> = ({
                           <div
                             className={`w-5 h-5 rounded flex items-center justify-center transition-all border ${
                               isChecked
-                                ? "bg-slate-900 border-slate-900 text-white dark:bg-slate-200 dark:border-white dark:text-gray-950 shadow-sm"
-                                : "bg-white dark:bg-transparent border-gray-300 dark:border-gray-700/80 hover:border-gray-500"
+                                ? "bg-emerald-500 border-emerald-500 text-slate-950 font-black shadow-sm"
+                                : "bg-transparent border-gray-300 dark:border-gray-700 hover:border-emerald-500/50"
                             }`}
                           >
-                            {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            {isChecked && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
                           </div>
                         </div>
                       </td>
                     );
                   })}
 
-                  {/* Progress Column */}
-                  <td className="px-1.5 sm:px-2 py-1.5 text-center font-medium bg-white dark:bg-[#12141c] text-gray-700 dark:text-gray-300">
-                    <div className="flex flex-col items-center justify-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-gray-900 dark:text-gray-200">
-                        {completedInMonth}/{days.length}
-                      </span>
-                      <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                        {habitRate}%
-                      </span>
-                    </div>
+                  {/* Results: Done Count */}
+                  <td className="px-2 py-1.5 text-center font-bold text-gray-800 dark:text-gray-200 border-r border-gray-200 dark:border-gray-800 text-[11px] sm:text-xs">
+                    {completedInMonth}/{days.length}
+                  </td>
+
+                  {/* Results: Percentage */}
+                  <td className="px-2 py-1.5 text-center font-extrabold text-[11px] sm:text-xs">
+                    <span
+                      className={
+                        habitRate === 100
+                          ? "text-emerald-500"
+                          : habitRate >= 70
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : habitRate >= 40
+                          ? "text-cyan-600 dark:text-cyan-400"
+                          : "text-gray-400"
+                      }
+                    >
+                      {habitRate}%
+                    </span>
                   </td>
                 </tr>
               );
             })}
-
-            {/* Daily Total Summary Row */}
-            <tr className="bg-gray-100/90 dark:bg-[#151722] font-semibold text-gray-700 dark:text-gray-300 border-t-2 border-gray-300 dark:border-gray-700">
-              <td className="sticky left-0 z-10 bg-gray-100/90 dark:bg-[#151722] px-3 sm:px-4 py-2 border-r border-gray-200 dark:border-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-gray-700 dark:text-gray-300 text-xs font-bold">
-                បំពេញសរុបប្រចាំថ្ងៃ
-              </td>
-
-              {days.map((day) => {
-                let dayTotal = 0;
-                habits.forEach((h) => {
-                  if (completions[`${h.id}_${day.dateString}`]) dayTotal++;
-                });
-
-                return (
-                  <td
-                    key={`daily-total-${day.dateString}`}
-                    className={`px-1 py-2 text-center border-r border-gray-200 dark:border-gray-800 text-[11px] font-bold ${
-                      day.isToday
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : dayTotal > 0
-                        ? "text-gray-900 dark:text-gray-200"
-                        : "text-gray-400 dark:text-gray-600"
-                    }`}
-                  >
-                    {dayTotal}
-                  </td>
-                );
-              })}
-
-              <td className="px-1 sm:px-2 py-2 text-center text-gray-500 dark:text-gray-400 text-[10px] font-bold">
-                សរុប
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>

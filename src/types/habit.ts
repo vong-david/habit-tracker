@@ -5,7 +5,7 @@ export interface Habit {
   category: string;
   color?: string;
   createdAt: string;
-  startDate?: string; // Optional custom start date for this habit
+  startDate?: string;
 }
 
 export type HabitCompletionMap = Record<string, boolean>; // key: `${habitId}_${dateString}` (YYYY-MM-DD)
@@ -27,11 +27,12 @@ export interface DayInfo {
   monthIndex: number; // 0 - 11
   monthName: string;
   isToday: boolean;
-  cycleIndex?: number; // 0 to N-1
+  cycleIndex?: number;
 }
 
 export interface TrackerCycleConfig {
-  mode: "calendar_month" | "custom_start_date";
+  mode: "today_to_end" | "custom_start_day" | "full_month" | "consecutive_days";
+  startDay?: number; // e.g. 12 or 17 (starts on this day of month to end of month)
   startDate?: string; // "YYYY-MM-DD"
-  durationDays?: number; // default 30
+  durationDays?: number; // default 30 for consecutive_days mode
 }

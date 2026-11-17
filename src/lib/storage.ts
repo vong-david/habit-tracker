@@ -129,13 +129,13 @@ export function saveWellness(wellness: WellnessMap, userId?: string): void {
 const BASE_CYCLE_CONFIG_KEY = "habit_tracker_cycle_config_v1";
 
 export function loadCycleConfig(userId?: string): TrackerCycleConfig {
-  if (typeof window === "undefined") return { mode: "calendar_month" };
+  if (typeof window === "undefined") return { mode: "today_to_end" };
   const key = getScopedKey(BASE_CYCLE_CONFIG_KEY, userId);
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : { mode: "calendar_month" };
+    return raw ? JSON.parse(raw) : { mode: "today_to_end" };
   } catch {
-    return { mode: "calendar_month" };
+    return { mode: "today_to_end" };
   }
 }
 

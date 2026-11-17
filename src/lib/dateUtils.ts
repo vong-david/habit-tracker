@@ -45,27 +45,32 @@ export function getKhmerDateRangeLabel(days: DayInfo[]): string {
   const year = toKhmerNum(last.getFullYear());
 
   if (first.getMonth() === last.getMonth() && first.getFullYear() === last.getFullYear()) {
-    return `${firstDay} - ${lastDay} ${lastMonth} ${year}`;
+    // If full month starting at 1
+    if (first.getDate() === 1 && last.getDate() >= 28) {
+      return `${firstMonth} ${year}`;
+    }
+    return `${firstDay} - ${lastDay} ${firstMonth} ${year}`;
   }
 
   return `${firstDay} ${firstMonth} - ${lastDay} ${lastMonth} ${year}`;
 }
 
 /**
- * Returns all days in a specific calendar month (1 to 28/29/30/31)
+ * Returns days in a specific calendar month from startDay (e.g. 12th or 17th) up to the end of the month
  */
-export function getDaysInMonth(year: number, monthIndex: number): DayInfo[] {
+export function getDaysInMonth(year: number, monthIndex: number, startDay: number = 1): DayInfo[] {
   const daysCount = new Date(year, monthIndex + 1, 0).getDate();
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
+  const validStartDay = Math.max(1, Math.min(startDay, daysCount));
   const days: DayInfo[] = [];
 
-  for (let d = 1; d <= daysCount; d++) {
+  for (let d = validStartDay; d <= daysCount; d++) {
     const date = new Date(year, monthIndex, d);
     const dayOfWeek = KHMER_DAY_NAMES[date.getDay()];
     const dateString = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const weekNumber = Math.ceil(d / 7);
+    const weekNumber = Math.floor((d - validStartDay) / 7) + 1;
 
     days.push({
       date,
@@ -76,7 +81,7 @@ export function getDaysInMonth(year: number, monthIndex: number): DayInfo[] {
       monthIndex,
       monthName: KHMER_MONTH_NAMES[monthIndex],
       isToday: dateString === todayStr,
-      cycleIndex: d - 1,
+      cycleIndex: d - validStartDay,
     });
   }
 
@@ -84,7 +89,7 @@ export function getDaysInMonth(year: number, monthIndex: number): DayInfo[] {
 }
 
 /**
- * Returns consecutive days starting from any custom starting date for a given duration (default 30 days)
+ * Returns consecutive days starting from any custom starting date for a given duration
  */
 export function getDaysForCycle(startDate: Date, durationDays: number = 30): DayInfo[] {
   const today = new Date();
