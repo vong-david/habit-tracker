@@ -26,7 +26,7 @@ export interface SpendingTransaction {
 export interface SpendingBudgetConfig {
   monthlyBudget: number; // in USD
   currency: Currency;
-  exchangeRate: number; // e.g. 4100 KHR per 1 USD
+  exchangeRate: number; // e.g. 4000 KHR per 1 USD
 }
 
 export interface SpendingDayTotal {

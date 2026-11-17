@@ -38,7 +38,7 @@ export const SpendingKpiCards: React.FC<SpendingKpiCardsProps> = ({
   onToggleCurrency,
 }) => {
   const monthlyBudget = budgetConfig.monthlyBudget || 400;
-  const exchangeRate = budgetConfig.exchangeRate || 4100;
+  const exchangeRate = budgetConfig.exchangeRate || 4000;
   const budgetPercentage = monthlyBudget > 0 ? Math.round((totalSpentUsd / monthlyBudget) * 100) : 0;
   const remainingUsd = Math.max(0, monthlyBudget - totalSpentUsd);
   const isOverBudget = totalSpentUsd > monthlyBudget;

@@ -19,13 +19,13 @@ export const BudgetSettingsModal: React.FC<BudgetSettingsModalProps> = ({
   onSaveConfig,
 }) => {
   const [monthlyBudget, setMonthlyBudget] = useState<string>("400");
-  const [exchangeRate, setExchangeRate] = useState<string>("4100");
+  const [exchangeRate, setExchangeRate] = useState<string>("4000");
   const [currency, setCurrency] = useState<Currency>("USD");
 
   useEffect(() => {
     if (config) {
       setMonthlyBudget(config.monthlyBudget.toString());
-      setExchangeRate((config.exchangeRate || 4100).toString());
+      setExchangeRate((config.exchangeRate || 4000).toString());
       setCurrency(config.currency || "USD");
     }
   }, [config, isOpen]);
@@ -35,7 +35,7 @@ export const BudgetSettingsModal: React.FC<BudgetSettingsModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const b = parseFloat(monthlyBudget) || 400;
-    const r = parseFloat(exchangeRate) || 4100;
+    const r = parseFloat(exchangeRate) || 4000;
 
     onSaveConfig({
       monthlyBudget: b,
@@ -46,7 +46,7 @@ export const BudgetSettingsModal: React.FC<BudgetSettingsModalProps> = ({
   };
 
   const parsedBudget = parseFloat(monthlyBudget) || 0;
-  const parsedRate = parseFloat(exchangeRate) || 4100;
+  const parsedRate = parseFloat(exchangeRate) || 4000;
   const khrEquivalent = Math.round(parsedBudget * parsedRate);
 
   return (
@@ -118,7 +118,7 @@ export const BudgetSettingsModal: React.FC<BudgetSettingsModalProps> = ({
               required
               value={exchangeRate}
               onChange={(e) => setExchangeRate(e.target.value)}
-              placeholder="4100"
+              placeholder="4000"
               className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl text-xs text-gray-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
             />
           </div>

@@ -5,7 +5,7 @@ import {
   Currency,
 } from "@/types/spending";
 
-export const DEFAULT_EXCHANGE_RATE = 4100; // 1 USD = 4,100 KHR
+export const DEFAULT_EXCHANGE_RATE = 4000; // 1 USD = 4,000 KHR
 
 export const DEFAULT_SPENDING_CATEGORIES: SpendingCategory[] = [
   {
@@ -148,7 +148,12 @@ export function loadSpendingBudget(userId?: string): SpendingBudgetConfig {
     const raw = localStorage.getItem(getScopedKey(BUDGET_KEY, userId));
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.monthlyBudget === "number") return parsed;
+      if (parsed && typeof parsed.monthlyBudget === "number") {
+        if (!parsed.exchangeRate || parsed.exchangeRate === 4100) {
+          parsed.exchangeRate = DEFAULT_EXCHANGE_RATE;
+        }
+        return parsed;
+      }
     }
   } catch (e) {
     console.error("Error loading spending budget config", e);

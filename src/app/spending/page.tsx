@@ -571,7 +571,7 @@ export default function SpendingPage() {
           transactions={transactions}
           theme={theme}
           currency={displayCurrency}
-          exchangeRate={budgetConfig.exchangeRate || 4100}
+          exchangeRate={budgetConfig.exchangeRate || 4000}
         />
 
         {/* 4. Middle Daily Spending Grid Table */}
@@ -585,7 +585,7 @@ export default function SpendingPage() {
           onMoveCategory={handleMoveCategory}
           onReorderCategories={handleReorderCategories}
           currency={displayCurrency}
-          exchangeRate={budgetConfig.exchangeRate || 4100}
+          exchangeRate={budgetConfig.exchangeRate || 4000}
         />
       </main>
 
@@ -598,7 +598,7 @@ export default function SpendingPage() {
         transactions={transactions}
         onAddTransaction={handleAddTransaction}
         onDeleteTransaction={handleDeleteTransaction}
-        exchangeRate={budgetConfig.exchangeRate || 4100}
+        exchangeRate={budgetConfig.exchangeRate || 4000}
       />
 
       {/* Add Category Modal */}
