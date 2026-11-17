@@ -1,5 +1,12 @@
 import * as XLSX from "xlsx";
 import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
+import { SpendingCategory, SpendingTransaction, SpendingBudgetConfig } from "@/types/spending";
+
+export interface UnifiedSpendingData {
+  categories: SpendingCategory[];
+  transactions: SpendingTransaction[];
+  budgetConfig: SpendingBudgetConfig;
+}
 
 export interface ExcelStorageState {
   isConnected: boolean;
@@ -83,7 +90,7 @@ export async function clearStoredHandle(): Promise<void> {
 }
 
 /**
- * Build XLSX Workbook from Habit Tracker data
+ * Build XLSX Workbook from Habit Tracker & Daily Spending data
  */
 export function buildExcelWorkbook(
   habits: Habit[],
@@ -92,7 +99,8 @@ export function buildExcelWorkbook(
   days: DayInfo[],
   label: string,
   cycleConfig?: TrackerCycleConfig,
-  notes?: HabitNotesMap
+  notes?: HabitNotesMap,
+  spending?: UnifiedSpendingData
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
@@ -140,17 +148,153 @@ export function buildExcelWorkbook(
   const wellnessSheet = XLSX.utils.aoa_to_sheet(wellnessDataValues);
   XLSX.utils.book_append_sheet(wb, wellnessSheet, "Overall Wellness");
 
-  // 3. Sheet: System Data Backup (Stores structured JSON in cell A1 for lossless re-import)
+  // 3. Sheet: Daily Spending (if spending data provided or exists)
+  if (spending && spending.categories && spending.categories.length > 0) {
+    const rate = spending.budgetConfig?.exchangeRate || 4000;
+    const cellSumMap: Record<string, number> = {};
+    const cellNotesMap: Record<string, string[]> = {};
+
+    (spending.transactions || []).forEach((tx) => {
+      const key = `${tx.categoryId}_${tx.dateString}`;
+      cellSumMap[key] = (cellSumMap[key] || 0) + tx.amount;
+      if (tx.note) {
+        if (!cellNotesMap[key]) cellNotesMap[key] = [];
+        cellNotesMap[key].push(tx.note);
+      }
+    });
+
+    const spendRow1 = [
+      `Daily Spending Tracker - ${label} (អត្រាប្តូរប្រាក់ 1$ = ${rate.toLocaleString()} ៛)`,
+      ...new Array(days.length + 4).fill(""),
+    ];
+
+    const spendHeaderRow = [
+      "ID",
+      "ប្រភេទចំណាយ (Category)",
+      "ថវិកា (Budget)",
+      ...days.map((d) => `${d.dayOfWeek} ${d.dayNumber}`),
+      "សរុប ($ USD)",
+      "សរុប (៛ KHR)",
+    ];
+
+    let grandTotalUsd = 0;
+    const dayTotalsUsd: number[] = new Array(days.length).fill(0);
+
+    const spendCategoryRows = spending.categories.map((cat) => {
+      let catTotal = 0;
+      const dayCells = days.map((day, dIdx) => {
+        const key = `${cat.id}_${day.dateString}`;
+        const amount = cellSumMap[key] || 0;
+        catTotal += amount;
+        dayTotalsUsd[dIdx] += amount;
+
+        if (amount > 0) {
+          const catNotes = cellNotesMap[key];
+          return catNotes && catNotes.length > 0
+            ? `$${amount.toFixed(2)} [${catNotes.join(", ")}]`
+            : `$${amount.toFixed(2)}`;
+        }
+        return "";
+      });
+
+      grandTotalUsd += catTotal;
+      const catTotalKhr = Math.round(catTotal * rate);
+      return [
+        cat.id,
+        `${cat.icon} ${cat.name}`,
+        cat.budget ? `$${cat.budget}` : "-",
+        ...dayCells,
+        `$${catTotal.toFixed(2)}`,
+        `${catTotalKhr.toLocaleString()} ៛`,
+      ];
+    });
+
+    const grandTotalKhr = Math.round(grandTotalUsd * rate);
+    const dailyTotalUsdRow = [
+      "TOTAL_USD",
+      "សរុបប្រចាំថ្ងៃ ($ USD)",
+      spending.budgetConfig?.monthlyBudget ? `$${spending.budgetConfig.monthlyBudget}` : "-",
+      ...dayTotalsUsd.map((t) => (t > 0 ? `$${t.toFixed(2)}` : "$0.00")),
+      `$${grandTotalUsd.toFixed(2)}`,
+      `${grandTotalKhr.toLocaleString()} ៛`,
+    ];
+
+    const dailyTotalKhrRow = [
+      "TOTAL_KHR",
+      `សរុបប្រចាំថ្ងៃ (៛ KHR @ ${rate})`,
+      "-",
+      ...dayTotalsUsd.map((t) => (t > 0 ? `${Math.round(t * rate).toLocaleString()} ៛` : "0 ៛")),
+      `${grandTotalKhr.toLocaleString()} ៛`,
+      "-",
+    ];
+
+    const spendGridData = [
+      spendRow1,
+      spendHeaderRow,
+      ...spendCategoryRows,
+      dailyTotalUsdRow,
+      dailyTotalKhrRow,
+    ];
+    const spendSheet = XLSX.utils.aoa_to_sheet(spendGridData);
+    XLSX.utils.book_append_sheet(wb, spendSheet, "Daily Spending");
+
+    // 4. Sheet: Transactions Log
+    const catMap = new Map<string, SpendingCategory>(spending.categories.map((c) => [c.id, c]));
+    const logHeader = [
+      "ID",
+      "កាលបរិច្ឆេទ (Date)",
+      "ប្រភេទចំណាយ (Category)",
+      "ទឹកប្រាក់ ($ USD)",
+      `ទឹកប្រាក់ (៛ KHR @ ${rate})`,
+      "វិធីទូទាត់ (Payment Method)",
+      "កំណត់ចំណាំ (Note)",
+      "កាលបរិច្ឆេទកត់ត្រា",
+    ];
+
+    const sortedTxs = [...(spending.transactions || [])].sort((a, b) =>
+      b.dateString.localeCompare(a.dateString)
+    );
+    const logRows = sortedTxs.map((tx) => {
+      const cat = catMap.get(tx.categoryId);
+      const khr = Math.round(tx.amount * rate);
+      return [
+        tx.id,
+        tx.dateString,
+        cat ? `${cat.icon} ${cat.name}` : tx.categoryId,
+        `$${tx.amount.toFixed(2)}`,
+        `${khr.toLocaleString()} ៛`,
+        tx.paymentMethod === "aba"
+          ? "ABA / KHQR"
+          : tx.paymentMethod === "cash"
+          ? "សាច់ប្រាក់"
+          : tx.paymentMethod === "card"
+          ? "កាត"
+          : "ផ្សេងៗ",
+        tx.note || "",
+        tx.createdAt || "",
+      ];
+    });
+
+    const logSheet = XLSX.utils.aoa_to_sheet([logHeader, ...logRows]);
+    XLSX.utils.book_append_sheet(wb, logSheet, "Transactions Log");
+  }
+
+  // 5. Sheet: System Data Backup (Stores structured JSON in cell A1 for lossless re-import)
   const systemData = {
-    version: "excel_v1",
+    version: "unified_v1",
     exportedAt: new Date().toISOString(),
+    exchangeRate: 4000,
     habits,
     completions,
     habitNotes: notes,
     wellness,
     cycleConfig,
+    spending: spending || undefined,
   };
-  const systemSheet = XLSX.utils.aoa_to_sheet([["__HABIT_TRACKER_JSON_DATA__"], [JSON.stringify(systemData)]]);
+  const systemSheet = XLSX.utils.aoa_to_sheet([
+    ["__HABIT_AND_SPENDING_JSON_DATA__"],
+    [JSON.stringify(systemData)],
+  ]);
   XLSX.utils.book_append_sheet(wb, systemSheet, "System_Backup");
 
   return wb;
@@ -166,15 +310,16 @@ export function generateExcelBuffer(
   days: DayInfo[],
   label: string,
   cycleConfig?: TrackerCycleConfig,
-  notes?: HabitNotesMap
+  notes?: HabitNotesMap,
+  spending?: UnifiedSpendingData
 ): any {
-  const wb = buildExcelWorkbook(habits, completions, wellness, days, label, cycleConfig, notes);
+  const wb = buildExcelWorkbook(habits, completions, wellness, days, label, cycleConfig, notes, spending);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return out;
 }
 
 /**
- * Parse an Excel file (.xlsx) into Habit Tracker data
+ * Parse an Excel file (.xlsx) into Habit & Spending Tracker data
  */
 export async function parseExcelFileData(
   arrayBuffer: ArrayBuffer
@@ -184,6 +329,7 @@ export async function parseExcelFileData(
   habitNotes?: HabitNotesMap;
   wellness?: WellnessMap;
   cycleConfig?: TrackerCycleConfig;
+  spending?: UnifiedSpendingData;
 }> {
   const wb = XLSX.read(arrayBuffer, { type: "array" });
 
@@ -201,6 +347,7 @@ export async function parseExcelFileData(
             habitNotes: parsed.habitNotes || {},
             wellness: parsed.wellness || {},
             cycleConfig: parsed.cycleConfig,
+            spending: parsed.spending || undefined,
           };
         }
       }
@@ -260,9 +407,10 @@ export async function writeToExcelFileHandle(
   days: DayInfo[],
   label: string,
   cycleConfig?: TrackerCycleConfig,
-  notes?: HabitNotesMap
+  notes?: HabitNotesMap,
+  spending?: UnifiedSpendingData
 ): Promise<void> {
-  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes);
+  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes, spending);
   // Request write permission if needed
   // @ts-ignore
   if (fileHandle.createWritable) {
@@ -287,11 +435,12 @@ export function downloadExcelFile(
   wellness: WellnessMap,
   days: DayInfo[],
   label: string,
-  fileName: string = "habit-tracker-data.xlsx",
+  fileName: string = "habit-and-spending-data.xlsx",
   cycleConfig?: TrackerCycleConfig,
-  notes?: HabitNotesMap
+  notes?: HabitNotesMap,
+  spending?: UnifiedSpendingData
 ): void {
-  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes);
+  const buffer = generateExcelBuffer(habits, completions, wellness, days, label, cycleConfig, notes, spending);
   const blob = new Blob([buffer as any], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });

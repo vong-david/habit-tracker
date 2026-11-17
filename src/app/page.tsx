@@ -30,7 +30,16 @@ import {
   writeToExcelFileHandle,
   downloadExcelFile,
   getStoredHandle,
+  UnifiedSpendingData,
 } from "@/lib/excelStorage";
+import {
+  loadSpendingCategories,
+  loadSpendingTransactions,
+  loadSpendingBudget,
+  saveSpendingCategories,
+  saveSpendingTransactions,
+  saveSpendingBudget,
+} from "@/lib/spendingStorage";
 import { Header } from "@/components/Header";
 import { DailyProgressBarChart, DailyProgressData } from "@/components/DailyProgressBarChart";
 import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
@@ -202,6 +211,11 @@ export default function Home() {
     setExcelState((prev) => ({ ...prev, isSyncing: true }));
     const timer = setTimeout(async () => {
       try {
+        const spendingData: UnifiedSpendingData = {
+          categories: loadSpendingCategories(user?.id),
+          transactions: loadSpendingTransactions(user?.id),
+          budgetConfig: loadSpendingBudget(user?.id),
+        };
         await writeToExcelFileHandle(
           excelState.fileHandle!,
           habits,
@@ -210,7 +224,8 @@ export default function Home() {
           days,
           dateRangeLabel,
           cycleConfig,
-          habitNotes
+          habitNotes,
+          spendingData
         );
         setExcelState((prev) => ({
           ...prev,
@@ -497,15 +512,21 @@ export default function Home() {
 
   // Export Excel (.xlsx)
   const handleExportExcel = () => {
+    const spendingData: UnifiedSpendingData = {
+      categories: loadSpendingCategories(user?.id),
+      transactions: loadSpendingTransactions(user?.id),
+      budgetConfig: loadSpendingBudget(user?.id),
+    };
     downloadExcelFile(
       habits,
       completions,
       wellness,
       days,
       dateRangeLabel,
-      excelState.fileName || "habit-tracker-data.xlsx",
+      excelState.fileName || "habit-and-spending-data.xlsx",
       cycleConfig,
-      habitNotes
+      habitNotes,
+      spendingData
     );
   };
 
@@ -518,6 +539,11 @@ export default function Home() {
       completions,
       habitNotes,
       wellness,
+      spending: {
+        categories: loadSpendingCategories(user?.id),
+        transactions: loadSpendingTransactions(user?.id),
+        budgetConfig: loadSpendingBudget(user?.id),
+      },
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -550,6 +576,11 @@ export default function Home() {
             setCycleConfig(parsed.cycleConfig);
             saveCycleConfig(parsed.cycleConfig, user?.id);
           }
+          if (parsed.spending) {
+            if (parsed.spending.categories) saveSpendingCategories(parsed.spending.categories, user?.id);
+            if (parsed.spending.transactions) saveSpendingTransactions(parsed.spending.transactions, user?.id);
+            if (parsed.spending.budgetConfig) saveSpendingBudget(parsed.spending.budgetConfig, user?.id);
+          }
           alert("ទិន្នន័យត្រូវបាននាំចូល (Import) ដោយជោគជ័យ!");
         } else {
           alert("ឯកសារ Backup មិនត្រឹមត្រូវទេ។");
@@ -570,6 +601,7 @@ export default function Home() {
     habitNotes?: HabitNotesMap;
     wellness?: WellnessMap;
     cycleConfig?: TrackerCycleConfig;
+    spending?: UnifiedSpendingData;
   }) => {
     if (data.habits && data.habits.length > 0) {
       setHabits(data.habits);
@@ -590,6 +622,11 @@ export default function Home() {
     if (data.cycleConfig) {
       setCycleConfig(data.cycleConfig);
       saveCycleConfig(data.cycleConfig, user?.id);
+    }
+    if (data.spending) {
+      if (data.spending.categories) saveSpendingCategories(data.spending.categories, user?.id);
+      if (data.spending.transactions) saveSpendingTransactions(data.spending.transactions, user?.id);
+      if (data.spending.budgetConfig) saveSpendingBudget(data.spending.budgetConfig, user?.id);
     }
   };
 
@@ -766,6 +803,11 @@ export default function Home() {
         days={days}
         dateRangeLabel={dateRangeLabel}
         cycleConfig={cycleConfig}
+        spending={{
+          categories: loadSpendingCategories(user?.id),
+          transactions: loadSpendingTransactions(user?.id),
+          budgetConfig: loadSpendingBudget(user?.id),
+        }}
         onImportData={handleImportFromExcel}
         canDismiss={true}
       />

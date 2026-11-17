@@ -30,12 +30,25 @@ import {
   getKhmerDateRangeLabel,
   toKhmerNum,
 } from "@/lib/dateUtils";
-import { loadCycleConfig, saveCycleConfig } from "@/lib/storage";
 import {
-  writeSpendingToExcelFileHandle,
-  downloadSpendingExcelFile,
-  getStoredSpendingHandle,
-} from "@/lib/spendingExcelStorage";
+  loadCycleConfig,
+  saveCycleConfig,
+  loadHabits,
+  loadCompletions,
+  loadWellness,
+  loadHabitNotes,
+  saveHabits,
+  saveCompletions,
+  saveWellness,
+  saveHabitNotes,
+} from "@/lib/storage";
+import {
+  writeToExcelFileHandle,
+  downloadExcelFile,
+  getStoredHandle,
+  UnifiedSpendingData,
+  parseExcelFileData,
+} from "@/lib/excelStorage";
 import { Header } from "@/components/Header";
 import { SpendingKpiCards } from "@/components/SpendingKpiCards";
 import { SpendingCharts, DailySpendingBarData } from "@/components/SpendingCharts";
@@ -45,7 +58,7 @@ import { AddSpendingCategoryModal } from "@/components/AddSpendingCategoryModal"
 import { EditSpendingCategoryModal } from "@/components/EditSpendingCategoryModal";
 import { BudgetSettingsModal } from "@/components/BudgetSettingsModal";
 import { StartingDayModal } from "@/components/StartingDayModal";
-import { SpendingExcelModal } from "@/components/SpendingExcelModal";
+import { ExcelConnectionModal } from "@/components/ExcelConnectionModal";
 
 export default function SpendingPage() {
   const [isClient, setIsClient] = useState(false);
@@ -112,8 +125,8 @@ export default function SpendingPage() {
       setCycleConfig({ mode: "today_to_end" });
     }
 
-    // Check saved Excel file handle
-    getStoredSpendingHandle().then(async (handle) => {
+    // Check saved Excel file handle (shared across Habits and Spending)
+    getStoredHandle().then(async (handle) => {
       if (handle) {
         try {
           // @ts-ignore
@@ -128,7 +141,7 @@ export default function SpendingPage() {
             });
           }
         } catch (e) {
-          console.warn("Could not query spending handle permission", e);
+          console.warn("Could not query Excel handle permission", e);
         }
       }
     });
@@ -192,21 +205,33 @@ export default function SpendingPage() {
     return getKhmerDateRangeLabel(days);
   }, [days]);
 
-  // Auto-sync to Linked Excel file (.xlsx)
+  // Auto-sync to Linked Excel file (.xlsx) - Preserves both Habits and Spending
   useEffect(() => {
     if (!isClient || !excelState.isConnected || !excelState.fileHandle) return;
 
     setExcelState((prev) => ({ ...prev, isSyncing: true }));
     const timer = setTimeout(async () => {
       try {
-        await writeSpendingToExcelFileHandle(
+        const currentHabits = loadHabits(user?.id);
+        const currentCompletions = loadCompletions(user?.id);
+        const currentWellness = loadWellness(user?.id);
+        const currentNotes = loadHabitNotes(user?.id);
+        const currentCycle = loadCycleConfig(user?.id) || cycleConfig;
+
+        await writeToExcelFileHandle(
           excelState.fileHandle!,
-          categories,
-          transactions,
+          currentHabits,
+          currentCompletions,
+          currentWellness,
           days,
           dateRangeLabel,
-          budgetConfig,
-          cycleConfig
+          currentCycle,
+          currentNotes,
+          {
+            categories,
+            transactions,
+            budgetConfig,
+          }
         );
         setExcelState((prev) => ({
           ...prev,
@@ -214,7 +239,7 @@ export default function SpendingPage() {
           lastSyncedAt: new Date().toLocaleTimeString(),
         }));
       } catch (err) {
-        console.warn("Auto-sync to spending Excel file failed", err);
+        console.warn("Auto-sync to unified Excel file failed", err);
         setExcelState((prev) => ({ ...prev, isSyncing: false }));
       }
     }, 1500);
@@ -230,6 +255,7 @@ export default function SpendingPage() {
     excelState.isConnected,
     excelState.fileHandle,
     isClient,
+    user?.id,
   ]);
 
   // Navigation handlers
@@ -363,29 +389,45 @@ export default function SpendingPage() {
     }
   };
 
-  // Export Excel
+  // Export Excel (Unified Workbook with Habits and Spending)
   const handleExportExcel = () => {
-    downloadSpendingExcelFile(
-      categories,
-      transactions,
+    const currentHabits = loadHabits(user?.id);
+    const currentCompletions = loadCompletions(user?.id);
+    const currentWellness = loadWellness(user?.id);
+    const currentNotes = loadHabitNotes(user?.id);
+    const currentCycle = loadCycleConfig(user?.id) || cycleConfig;
+
+    downloadExcelFile(
+      currentHabits,
+      currentCompletions,
+      currentWellness,
       days,
       dateRangeLabel,
-      budgetConfig,
-      excelState.fileName || "daily-spending-data.xlsx",
-      cycleConfig
+      excelState.fileName || "habit-and-spending-data.xlsx",
+      currentCycle,
+      currentNotes,
+      {
+        categories,
+        transactions,
+        budgetConfig,
+      }
     );
   };
 
   // Export JSON Backup
   const handleExportData = () => {
     const backup = {
-      type: "spending_tracker_backup",
-      version: "v1",
+      type: "spending_and_habits_backup",
+      version: "unified_v1",
       user: user ? { email: user.email, name: user.name } : null,
       cycleConfig,
       budgetConfig,
       categories,
       transactions,
+      habits: loadHabits(user?.id),
+      completions: loadCompletions(user?.id),
+      habitNotes: loadHabitNotes(user?.id),
+      wellness: loadWellness(user?.id),
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -408,16 +450,25 @@ export default function SpendingPage() {
         const parsed = JSON.parse(event.target?.result as string);
         if (parsed.categories && Array.isArray(parsed.categories)) {
           setCategories(parsed.categories);
-          if (parsed.transactions) setTransactions(parsed.transactions);
-          if (parsed.budgetConfig) setBudgetConfig(parsed.budgetConfig);
-          if (parsed.cycleConfig) {
-            setCycleConfig(parsed.cycleConfig);
-            saveCycleConfig(parsed.cycleConfig, user?.id);
-          }
-          alert("ទិន្នន័យចំណាយត្រូវបាននាំចូល (Import) ដោយជោគជ័យ!");
-        } else {
-          alert("ឯកសារ Backup មិនត្រឹមត្រូវទេ។");
+          saveSpendingCategories(parsed.categories, user?.id);
         }
+        if (parsed.transactions) {
+          setTransactions(parsed.transactions);
+          saveSpendingTransactions(parsed.transactions, user?.id);
+        }
+        if (parsed.budgetConfig) {
+          setBudgetConfig(parsed.budgetConfig);
+          saveSpendingBudget(parsed.budgetConfig, user?.id);
+        }
+        if (parsed.habits) saveHabits(parsed.habits, user?.id);
+        if (parsed.completions) saveCompletions(parsed.completions, user?.id);
+        if (parsed.habitNotes) saveHabitNotes(parsed.habitNotes, user?.id);
+        if (parsed.wellness) saveWellness(parsed.wellness, user?.id);
+        if (parsed.cycleConfig) {
+          setCycleConfig(parsed.cycleConfig);
+          saveCycleConfig(parsed.cycleConfig, user?.id);
+        }
+        alert("ទិន្នន័យត្រូវបាននាំចូល (Import) ដោយជោគជ័យ!");
       } catch (err) {
         console.error(err);
         alert("មិនអាចអានឯកសារបានឡើយ។");
@@ -429,26 +480,42 @@ export default function SpendingPage() {
 
   // Import from Excel file
   const handleImportFromExcel = (data: {
-    categories?: SpendingCategory[];
-    transactions?: SpendingTransaction[];
-    budgetConfig?: SpendingBudgetConfig;
+    habits?: any[];
+    completions?: any;
+    habitNotes?: any;
+    wellness?: any;
     cycleConfig?: TrackerCycleConfig;
+    spending?: UnifiedSpendingData;
   }) => {
-    if (data.categories && data.categories.length > 0) {
-      setCategories(data.categories);
-      saveSpendingCategories(data.categories, user?.id);
+    if (data.habits && data.habits.length > 0) {
+      saveHabits(data.habits, user?.id);
     }
-    if (data.transactions) {
-      setTransactions(data.transactions);
-      saveSpendingTransactions(data.transactions, user?.id);
+    if (data.completions) {
+      saveCompletions(data.completions, user?.id);
     }
-    if (data.budgetConfig) {
-      setBudgetConfig(data.budgetConfig);
-      saveSpendingBudget(data.budgetConfig, user?.id);
+    if (data.habitNotes) {
+      saveHabitNotes(data.habitNotes, user?.id);
+    }
+    if (data.wellness) {
+      saveWellness(data.wellness, user?.id);
     }
     if (data.cycleConfig) {
       setCycleConfig(data.cycleConfig);
       saveCycleConfig(data.cycleConfig, user?.id);
+    }
+    if (data.spending) {
+      if (data.spending.categories) {
+        setCategories(data.spending.categories);
+        saveSpendingCategories(data.spending.categories, user?.id);
+      }
+      if (data.spending.transactions) {
+        setTransactions(data.spending.transactions);
+        saveSpendingTransactions(data.spending.transactions, user?.id);
+      }
+      if (data.spending.budgetConfig) {
+        setBudgetConfig(data.spending.budgetConfig);
+        saveSpendingBudget(data.spending.budgetConfig, user?.id);
+      }
     }
   };
 
@@ -635,8 +702,8 @@ export default function SpendingPage() {
         currentDate={currentDate}
       />
 
-      {/* Excel Connection Modal for Daily Spending */}
-      <SpendingExcelModal
+      {/* Unified Excel Storage Connection Modal (Shared with Habits) */}
+      <ExcelConnectionModal
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
         onConnected={(fileName, fileHandle) => {
@@ -648,12 +715,18 @@ export default function SpendingPage() {
             isSyncing: false,
           });
         }}
-        categories={categories}
-        transactions={transactions}
+        habits={loadHabits(user?.id)}
+        completions={loadCompletions(user?.id)}
+        habitNotes={loadHabitNotes(user?.id)}
+        wellness={loadWellness(user?.id)}
         days={days}
         dateRangeLabel={dateRangeLabel}
-        budgetConfig={budgetConfig}
         cycleConfig={cycleConfig}
+        spending={{
+          categories,
+          transactions,
+          budgetConfig,
+        }}
         onImportData={handleImportFromExcel}
         canDismiss={true}
       />

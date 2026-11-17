@@ -18,6 +18,7 @@ import {
   saveStoredHandle,
   parseExcelFileData,
   downloadExcelFile,
+  UnifiedSpendingData,
 } from "@/lib/excelStorage";
 import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
 
@@ -32,12 +33,14 @@ interface ExcelConnectionModalProps {
   days: DayInfo[];
   dateRangeLabel: string;
   cycleConfig: TrackerCycleConfig;
+  spending?: UnifiedSpendingData;
   onImportData: (data: {
     habits?: Habit[];
     completions?: HabitCompletionMap;
     habitNotes?: HabitNotesMap;
     wellness?: WellnessMap;
     cycleConfig?: TrackerCycleConfig;
+    spending?: UnifiedSpendingData;
   }) => void;
   canDismiss?: boolean;
 }
@@ -53,6 +56,7 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
   days,
   dateRangeLabel,
   cycleConfig,
+  spending,
   onImportData,
   canDismiss = true,
 }) => {
@@ -84,14 +88,14 @@ export const ExcelConnectionModal: React.FC<ExcelConnectionModalProps> = ({
         });
 
         // Write current habits/data to the new file
-        await writeToExcelFileHandle(handle, habits, completions, wellness, days, dateRangeLabel, cycleConfig, habitNotes);
+        await writeToExcelFileHandle(handle, habits, completions, wellness, days, dateRangeLabel, cycleConfig, habitNotes, spending);
         await saveStoredHandle(handle);
 
         onConnected(handle.name, handle);
         onClose();
       } else {
         // Fallback for browsers without File System API: download the file
-        downloadExcelFile(habits, completions, wellness, days, dateRangeLabel, "habit-tracker-data.xlsx", cycleConfig, habitNotes);
+        downloadExcelFile(habits, completions, wellness, days, dateRangeLabel, "habit-tracker-data.xlsx", cycleConfig, habitNotes, spending);
         onConnected("habit-tracker-data.xlsx", null);
         onClose();
       }
