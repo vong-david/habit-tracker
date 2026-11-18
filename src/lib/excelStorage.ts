@@ -313,18 +313,21 @@ export function buildExcelWorkbook(
   if (trading && trading.length > 0) {
     const tradeHeader = [
       "ID",
-      "កាលបរិច្ឆេទ (Date)",
+      "គណនី (Account)",
+      "គូជួញដូរ (Pair/Symbol)",
+      "ថ្ងៃបើក (Open Date)",
+      "ថ្ងៃបិទ (Close Date)",
       "ម៉ោង (Time)",
-      "និមិត្តសញ្ញា (Symbol)",
       "ទិសដៅ (Direction)",
-      "លទ្ធផល (Outcome)",
-      "ចំណេញ/ខាត ($ USD)",
-      "ចំណេញ/ខាត (៛ KHR @ 4000)",
-      "ចំនួនកុងត្រា (Qty)",
-      "តម្លៃចូល (Entry)",
-      "តម្លៃចេញ (Exit)",
-      "Setup",
-      "វិន័យ/កំហុស (Mistake/Rules)",
+      "Session",
+      "Entry Confluences (Setups)",
+      "Risk/Reward",
+      "ប្រាក់ចំណេញ ($ Profit)",
+      "ប្រាក់ខាត ($ Loss)",
+      "លទ្ធផលសុទ្ធ (Net P&L $)",
+      "លទ្ធផលសុទ្ធ (៛ KHR @ 4000)",
+      "វិន័យ (Discipline)",
+      "ទំហំ (Qty/Lots)",
       "កំណត់ចំណាំ (Notes)",
       "រូបភាព Chart (Screenshots)",
       "កាលបរិច្ឆេទបង្កើត",
@@ -333,20 +336,29 @@ export function buildExcelWorkbook(
     const sortedTrades = [...trading].sort((a, b) => b.dateString.localeCompare(a.dateString));
     const tradeRows = sortedTrades.map((t) => {
       const khrPnl = Math.round(t.pnl * 4000);
+      const confluencesStr = t.entryConfluences && t.entryConfluences.length > 0
+        ? t.entryConfluences.join(" | ")
+        : t.setup || "";
+      const profitStr = t.profit !== undefined ? `$${t.profit.toFixed(2)}` : t.pnl > 0 ? `$${t.pnl.toFixed(2)}` : "$0.00";
+      const lossStr = t.loss !== undefined ? `$${t.loss.toFixed(2)}` : t.pnl < 0 ? `$${Math.abs(t.pnl).toFixed(2)}` : "$0.00";
+
       return [
         t.id,
-        t.dateString,
-        t.time || "",
+        t.account || "-",
         t.symbol,
+        t.dateString,
+        t.closeDateString || t.dateString,
+        t.time || "",
         t.direction,
-        t.outcome,
+        t.session || "-",
+        confluencesStr,
+        t.riskReward || "-",
+        profitStr,
+        lossStr,
         t.pnl >= 0 ? `+$${t.pnl.toFixed(2)}` : `-$${Math.abs(t.pnl).toFixed(2)}`,
         t.pnl >= 0 ? `+${khrPnl.toLocaleString()} ៛` : `-${Math.abs(khrPnl).toLocaleString()} ៛`,
+        t.discipline || (t.mistake?.includes("Followed") ? "Done" : "Done"),
         t.quantity !== undefined ? t.quantity : "-",
-        t.entryPrice !== undefined ? t.entryPrice : "-",
-        t.exitPrice !== undefined ? t.exitPrice : "-",
-        t.setup || "",
-        t.mistake || "",
         t.notes || "",
         t.imageUrls && t.imageUrls.length > 0 ? `${t.imageUrls.length} រូប` : "គ្មាន",
         t.createdAt || "",

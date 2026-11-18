@@ -170,59 +170,95 @@ export const DayTradesDetailModal: React.FC<DayTradesDetailModalProps> = ({
             daySummary.trades.map((trade, idx) => {
               const isWin = trade.pnl > 0;
               const isLoss = trade.pnl < 0;
+              const isSell = trade.direction === "SELL" || trade.direction === "SHORT";
 
               return (
                 <div
                   key={trade.id}
-                  className="p-4 bg-gray-50/80 dark:bg-[#181a26] border border-gray-200 dark:border-gray-800/80 rounded-2xl shadow-xs hover:border-gray-300 dark:hover:border-gray-700 transition-all space-y-2.5"
+                  className="p-4 bg-gray-50/80 dark:bg-[#181a26] border border-gray-200 dark:border-gray-800/80 rounded-2xl shadow-xs hover:border-gray-300 dark:hover:border-gray-700 transition-all space-y-3"
                 >
-                  {/* Top Bar of trade card */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white">
-                        #{idx + 1} {trade.symbol}
+                  {/* Row 1: Account, Pair, Direction, Session, Discipline, Net P&L, Actions */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {/* Account */}
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-gray-200/80 dark:bg-gray-800 text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                        <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center justify-center text-[10px]">
+                          {(trade.account || "T")[0]}
+                        </span>
+                        <span>{trade.account || "Thun Tula"}</span>
                       </span>
 
-                      {/* Direction Badge */}
+                      {/* Pair / Symbol */}
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                        {trade.symbol}
+                      </span>
+
+                      {/* Direction: Sell (Red) vs Buy (Green) */}
                       <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-0.5 ${
-                          trade.direction === "LONG"
-                            ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                            : "bg-red-500/20 text-red-600 dark:text-red-400"
+                        className={`text-[11px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-0.5 ${
+                          isSell
+                            ? "bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30"
+                            : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
                         }`}
                       >
-                        {trade.direction === "LONG" ? (
-                          <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                        {isSell ? (
+                          <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />
                         ) : (
-                          <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                          <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" />
                         )}
-                        <span>{trade.direction}</span>
+                        <span>{isSell ? "Sell" : "Buy"}</span>
                       </span>
 
-                      {trade.time && (
-                        <span className="text-[11px] text-gray-400">@{trade.time}</span>
+                      {/* Session */}
+                      {trade.session && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {trade.session}
+                        </span>
                       )}
+
+                      {/* Discipline */}
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          trade.discipline === "Violated"
+                            ? "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30"
+                            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            trade.discipline === "Violated" ? "bg-red-500" : "bg-emerald-500"
+                          }`}
+                        />
+                        <span>{trade.discipline || "Done"}</span>
+                      </span>
                     </div>
 
-                    {/* Actions and P&L */}
+                    {/* Actions and Net P&L */}
                     <div className="flex items-center gap-2.5">
-                      <span
-                        className={`text-base font-black ${
-                          isWin
-                            ? "text-emerald-500"
-                            : isLoss
-                            ? "text-red-500"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {formatPnl(trade.pnl)}
-                      </span>
+                      <div className="text-right">
+                        <span
+                          className={`text-base sm:text-lg font-black block leading-tight ${
+                            isWin
+                              ? "text-emerald-500"
+                              : isLoss
+                              ? "text-red-500"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {formatPnl(trade.pnl)}
+                        </span>
+                        {(trade.profit !== undefined || trade.loss !== undefined) && (
+                          <span className="text-[10px] text-gray-400">
+                            {trade.profit ? `+$${trade.profit}` : "$0"} / {trade.loss ? `-$${trade.loss}` : "$0"}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-1 border-l pl-2 border-gray-200 dark:border-gray-700">
                         <button
                           type="button"
                           onClick={() => onEditTrade(trade)}
-                          className="p-1 text-gray-400 hover:text-emerald-500 rounded transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-emerald-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                           title="កែប្រែ Trade"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -230,7 +266,7 @@ export const DayTradesDetailModal: React.FC<DayTradesDetailModalProps> = ({
                         <button
                           type="button"
                           onClick={() => onDeleteTrade(trade.id)}
-                          className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                           title="លុប Trade"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -239,39 +275,54 @@ export const DayTradesDetailModal: React.FC<DayTradesDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Badges for Strategy Setup & Psychology */}
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                    {trade.setup && (
-                      <span className="px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold border border-blue-500/20">
-                        🎯 Setup: {trade.setup}
-                      </span>
-                    )}
-                    {trade.mistake && (
-                      <span
-                        className={`px-2 py-0.5 rounded-lg font-semibold border ${
-                          trade.mistake.includes("Followed") || trade.mistake.includes("Rules")
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                        }`}
-                      >
-                        🧠 {trade.mistake}
-                      </span>
-                    )}
-                    {trade.quantity && (
-                      <span className="px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
-                        Qty: {trade.quantity}
-                      </span>
-                    )}
-                    {trade.entryPrice && (
-                      <span className="text-gray-400 text-[10px]">
-                        Entry: {trade.entryPrice} {trade.exitPrice ? `→ Exit: ${trade.exitPrice}` : ""}
+                  {/* Row 2: Open Date, Close Date, Risk/Reward */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-800/60">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-gray-400" />
+                      <span>Open:</span>
+                      <strong className="text-gray-800 dark:text-gray-200">
+                        {trade.dateString} {trade.time ? `@${trade.time}` : ""}
+                      </strong>
+                    </span>
+
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-gray-400" />
+                      <span>Close:</span>
+                      <strong className="text-gray-800 dark:text-gray-200">
+                        {trade.closeDateString || trade.dateString} {trade.closeTime ? `@${trade.closeTime}` : ""}
+                      </strong>
+                    </span>
+
+                    {trade.riskReward && (
+                      <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20 text-[11px]">
+                        R:R {trade.riskReward}
                       </span>
                     )}
                   </div>
 
+                  {/* Row 3: Entry Confluences (Setups & Models pills matching Notion) */}
+                  {((trade.entryConfluences && trade.entryConfluences.length > 0) || trade.setup) && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {trade.entryConfluences && trade.entryConfluences.length > 0 ? (
+                        trade.entryConfluences.map((conf, cIdx) => (
+                          <span
+                            key={cIdx}
+                            className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25"
+                          >
+                            {conf}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          {trade.setup}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Notes */}
                   {trade.notes && (
-                    <p className="text-xs text-gray-700 dark:text-gray-300 bg-white/70 dark:bg-[#12141c]/70 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800/60 leading-relaxed">
+                    <p className="text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-[#12141c] p-2.5 rounded-xl border border-gray-200/80 dark:border-gray-800/80 leading-relaxed font-normal">
                       {trade.notes}
                     </p>
                   )}

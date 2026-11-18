@@ -1,19 +1,29 @@
-export type TradeDirection = "LONG" | "SHORT";
+export type TradeDirection = "BUY" | "SELL" | "LONG" | "SHORT";
 export type TradeOutcome = "WIN" | "LOSS" | "BE";
+export type TradeDiscipline = "Done" | "Violated" | "Missed";
 
 export interface Trade {
   id: string;
-  dateString: string; // YYYY-MM-DD
-  time?: string; // HH:MM
-  symbol: string; // e.g., "NQ", "ES", "XAUUSD", "BTC", "EURUSD"
-  direction: TradeDirection;
+  account?: string; // e.g., "Thun Tula", "Apex 50K", "Personal"
+  symbol: string; // Pair e.g., "XAUUSD", "NQ", "ES", "EURUSD", "BTC"
+  dateString: string; // Open Date YYYY-MM-DD
+  closeDateString?: string; // Close Date YYYY-MM-DD
+  time?: string; // Open Time HH:MM
+  closeTime?: string; // Close Time HH:MM
+  direction: TradeDirection; // Buy / Sell
+  session?: string; // e.g., "New York AM", "London", "New York PM", "Asian"
+  entryConfluences?: string[]; // Multi-tags: ["Liquidity Sweep", "HTF-Bias", "SIBI", "Silver Bullet"]
+  riskReward?: string; // e.g., "1:4R", "1:2R", "1:3R"
+  profit?: number; // Profit amount in USD (e.g. 1490.00)
+  loss?: number; // Loss amount in USD (e.g. 0.00)
   pnl: number; // Net P&L in USD (positive = win, negative = loss)
   outcome: TradeOutcome;
+  discipline?: TradeDiscipline; // "Done" (Followed rules) or "Violated"
   quantity?: number; // Contracts / Lots
   entryPrice?: number;
   exitPrice?: number;
-  setup?: string; // e.g. "Liquidity Sweep", "Fair Value Gap", "Breakout"
-  mistake?: string; // e.g. "Followed Rules", "FOMO", "Early Exit"
+  setup?: string; // Legacy single setup compatibility
+  mistake?: string; // Legacy compatibility
   notes?: string;
   imageUrls?: string[]; // Image IDs or DataURLs stored in IndexedDB
   createdAt: string;
