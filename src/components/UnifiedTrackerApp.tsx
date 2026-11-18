@@ -1098,10 +1098,10 @@ export const UnifiedTrackerApp: React.FC<UnifiedTrackerAppProps> = ({
             {/* Daily & Weekly Progress Bar Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               <div className="lg:col-span-2">
-                <DailyProgressBarChart data={dailyChartData} />
+                <DailyProgressBarChart data={dailyChartData} theme={theme} />
               </div>
               <div>
-                <WeeklyProgressBarChart data={weeklyChartData} />
+                <WeeklyProgressBarChart data={weeklyChartData} theme={theme} />
               </div>
             </div>
 
@@ -1153,6 +1153,7 @@ export const UnifiedTrackerApp: React.FC<UnifiedTrackerAppProps> = ({
               transactions={transactions}
               currency={displayCurrency}
               exchangeRate={4000}
+              theme={theme}
             />
 
             {/* Detailed Spending Matrix Grid */}

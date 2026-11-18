@@ -27,9 +27,13 @@ interface WeeklyProgressBarChartProps {
 
 export const WeeklyProgressBarChart: React.FC<WeeklyProgressBarChartProps> = ({
   data,
-  theme = "dark",
+  theme,
 }) => {
-  const isDark = theme === "dark";
+  const isDark =
+    theme !== undefined
+      ? theme === "dark"
+      : typeof document !== "undefined" &&
+        document.documentElement.classList.contains("dark");
 
   return (
     <div className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm dark:shadow-lg h-full flex flex-col transition-colors">
@@ -50,21 +54,21 @@ export const WeeklyProgressBarChart: React.FC<WeeklyProgressBarChartProps> = ({
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke={isDark ? "#222634" : "#f1f5f9"}
+              stroke={isDark ? "#222634" : "#e2e8f0"}
             />
             <YAxis
               domain={[0, 100]}
               ticks={[0, 25, 50, 75, 100]}
               tickFormatter={(v) => `${v}%`}
-              tick={{ fill: isDark ? "#9ca3af" : "#64748b", fontSize: 9 }}
-              axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
+              tick={{ fill: isDark ? "#9ca3af" : "#475569", fontSize: 9 }}
+              axisLine={{ stroke: isDark ? "#2a2f3f" : "#cbd5e1" }}
               tickLine={false}
             />
             <XAxis
               dataKey="weekLabel"
               tickLine={false}
-              axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
-              tick={{ fill: isDark ? "#cbd5e1" : "#475569", fontSize: 10 }}
+              axisLine={{ stroke: isDark ? "#2a2f3f" : "#cbd5e1" }}
+              tick={{ fill: isDark ? "#cbd5e1" : "#1e293b", fontSize: 10, fontWeight: "600" }}
               height={28}
             />
             <Tooltip
@@ -98,10 +102,10 @@ export const WeeklyProgressBarChart: React.FC<WeeklyProgressBarChartProps> = ({
                   fill={
                     entry.percentage > 0
                       ? isDark
-                        ? "#ffffff"
-                        : "#0f172a"
+                        ? "#10b981"
+                        : "#059669"
                       : isDark
-                      ? "#2a2f3f"
+                      ? "#262b3d"
                       : "#e2e8f0"
                   }
                 />

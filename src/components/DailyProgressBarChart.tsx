@@ -31,9 +31,13 @@ interface DailyProgressBarChartProps {
 
 export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
   data,
-  theme = "dark",
+  theme,
 }) => {
-  const isDark = theme === "dark";
+  const isDark =
+    theme !== undefined
+      ? theme === "dark"
+      : typeof document !== "undefined" &&
+        document.documentElement.classList.contains("dark");
 
   return (
     <div className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm dark:shadow-lg transition-colors">
@@ -56,21 +60,21 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke={isDark ? "#222634" : "#f1f5f9"}
+              stroke={isDark ? "#222634" : "#e2e8f0"}
             />
             <YAxis
               domain={[0, 100]}
               ticks={[0, 25, 50, 75, 100]}
               tickFormatter={(v) => `${v}%`}
-              tick={{ fill: isDark ? "#9ca3af" : "#64748b", fontSize: 9 }}
-              axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
+              tick={{ fill: isDark ? "#9ca3af" : "#475569", fontSize: 9 }}
+              axisLine={{ stroke: isDark ? "#2a2f3f" : "#cbd5e1" }}
               tickLine={false}
             />
             <XAxis
               dataKey="dateString"
               interval={0}
               tickLine={false}
-              axisLine={{ stroke: isDark ? "#2a2f3f" : "#e2e8f0" }}
+              axisLine={{ stroke: isDark ? "#2a2f3f" : "#cbd5e1" }}
               tick={({ x, y, payload }) => {
                 const item = data.find((d) => d.dateString === payload.value || d.dayInfo.dateString === payload.value);
                 const isToday = item?.dayInfo.isToday;
@@ -81,9 +85,9 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
                       y={7}
                       dy={4}
                       textAnchor="middle"
-                      fill={isToday ? "#10b981" : isDark ? "#9ca3af" : "#64748b"}
+                      fill={isToday ? (isDark ? "#34d399" : "#059669") : isDark ? "#94a3b8" : "#475569"}
                       fontSize={8}
-                      fontWeight={isToday ? "bold" : "normal"}
+                      fontWeight={isToday ? "bold" : "600"}
                     >
                       {item?.dayOfWeek}
                     </text>
@@ -92,9 +96,9 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
                       y={17}
                       dy={4}
                       textAnchor="middle"
-                      fill={isToday ? "#10b981" : isDark ? "#d1d5db" : "#334155"}
-                      fontSize={8}
-                      fontWeight={isToday ? "bold" : "500"}
+                      fill={isToday ? (isDark ? "#34d399" : "#059669") : isDark ? "#f1f5f9" : "#0f172a"}
+                      fontSize={9}
+                      fontWeight={isToday ? "bold" : "600"}
                     >
                       {item?.dayNumber ?? payload.value}
                     </text>
@@ -125,14 +129,17 @@ export const DailyProgressBarChart: React.FC<DailyProgressBarChartProps> = ({
             />
             <Bar
               dataKey="percentage"
-              radius={[2, 2, 0, 0]}
+              radius={[3, 3, 0, 0]}
               maxBarSize={18}
             >
               {data.map((entry, index) => {
                 const isToday = entry.dayInfo.isToday;
-                let fillColor = isDark ? "#ffffff" : "#0f172a";
-                if (isToday) fillColor = "#10b981";
-                else if (entry.percentage === 0) fillColor = isDark ? "#2a2f3f" : "#e2e8f0";
+                let fillColor = isDark ? "#10b981" : "#059669";
+                if (isToday) {
+                  fillColor = isDark ? "#34d399" : "#10b981";
+                } else if (entry.percentage === 0) {
+                  fillColor = isDark ? "#262b3d" : "#e2e8f0";
+                }
 
                 return <Cell key={`cell-${index}`} fill={fillColor} />;
               })}
