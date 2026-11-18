@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -15,13 +15,16 @@ import {
   Sun,
   Moon,
   FileSpreadsheet,
+  Settings2,
+  ChevronDown,
 } from "lucide-react";
 import { getKhmerMonthYear } from "@/lib/dateUtils";
 import { UserProfile, SyncStatus } from "@/types/auth";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 
-interface HeaderProps {
+export interface HeaderProps {
   activeTab?: "habits" | "spending" | "journal";
+  onTabChange?: (tab: "habits" | "spending" | "journal") => void;
   customTitle?: string;
   customSubtitle?: string;
   addButtonLabel?: string;
@@ -56,10 +59,12 @@ interface HeaderProps {
   todayPercentage?: number;
   monthAveragePercentage?: number;
   statPills?: React.ReactNode;
+  extraActionButtons?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab = "habits",
+  onTabChange,
   customTitle,
   customSubtitle,
   addButtonLabel,
@@ -88,9 +93,27 @@ export const Header: React.FC<HeaderProps> = ({
   todayPercentage = 0,
   monthAveragePercentage = 0,
   statPills,
+  extraActionButtons,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dataMenuRef = useRef<HTMLDivElement>(null);
+  const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
   const monthYearString = getKhmerMonthYear(currentDate);
+
+  // Close data dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dataMenuRef.current && !dataMenuRef.current.contains(e.target as Node)) {
+        setIsDataMenuOpen(false);
+      }
+    };
+    if (isDataMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDataMenuOpen]);
 
   const displayTitle =
     customTitle ||
@@ -116,123 +139,156 @@ export const Header: React.FC<HeaderProps> = ({
       ? "បន្ថែមប្រភេទចំណាយ"
       : "បន្ថែមទម្លាប់ថ្មី");
 
+  const handleTabClick = (tab: "habits" | "spending" | "journal") => {
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
+
   return (
-    <header className="bg-white dark:bg-[#12141c] border-b border-gray-200 dark:border-gray-800/80 px-3 sm:px-6 py-3.5 shadow-sm transition-colors sticky top-0 z-30 backdrop-blur-md bg-white/95 dark:bg-[#12141c]/95">
-      <div className="max-w-[1700px] mx-auto flex flex-col gap-3.5">
+    <header className="bg-white/95 dark:bg-[#12141c]/95 border-b border-gray-200 dark:border-gray-800/80 px-3 sm:px-6 py-2.5 shadow-sm transition-colors sticky top-0 z-30 backdrop-blur-md">
+      <div className="max-w-[1700px] mx-auto flex flex-col gap-2.5">
         
-        {/* Top Bar: Brand, Navigation Switcher, Month Navigator, Excel Storage, Auth, Theme */}
+        {/* ROW 1: System Navigation, Date Navigator, Excel Storage, Auth, Theme */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Brand & Page Navigation Tabs */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-black tracking-wider text-xs sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
-              {activeTab === "journal" ? "📈" : activeTab === "spending" ? "💰" : "HT"}
-            </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5">
-                <span>{displayTitle}</span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hidden xs:inline-block">
-                  Excel Storage (.xlsx)
-                </span>
-              </h1>
-              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                {displaySubtitle}
-              </p>
+          
+          {/* Brand Logo & Navigation Segmented Tabs */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-black tracking-wider text-sm shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
+                {activeTab === "journal" ? "📈" : activeTab === "spending" ? "💰" : "🎯"}
+              </div>
+              <div className="hidden xs:block">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-1.5 leading-tight">
+                  <span>{displayTitle}</span>
+                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hidden lg:inline-block">
+                    Excel
+                  </span>
+                </h1>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 hidden xl:block leading-tight">
+                  {displaySubtitle}
+                </p>
+              </div>
             </div>
 
             {/* Navigation Tabs (Habit Tracker vs Daily Spending vs Trading Journal) */}
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-xl border border-gray-200 dark:border-gray-800 text-xs ml-1 sm:ml-2">
-              <Link
-                href="/"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
-                  activeTab === "habits"
-                    ? "bg-emerald-500 text-slate-950 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                <span>🎯 ទម្លាប់</span>
-                <span className="hidden lg:inline text-[10px] opacity-80">(Habits)</span>
-              </Link>
+            <nav className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-xl border border-gray-200 dark:border-gray-800 text-xs shadow-inner">
+              {onTabChange ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick("habits")}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      activeTab === "habits"
+                        ? "bg-emerald-500 text-slate-950 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>🎯 ទម្លាប់</span>
+                    <span className="hidden md:inline text-[10px] opacity-80">(Habits)</span>
+                  </button>
 
-              <Link
-                href="/spending"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
-                  activeTab === "spending"
-                    ? "bg-emerald-500 text-slate-950 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                <span>💰 ចំណាយ</span>
-                <span className="hidden lg:inline text-[10px] opacity-80">(Spending)</span>
-              </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick("spending")}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      activeTab === "spending"
+                        ? "bg-emerald-500 text-slate-950 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>💰 ចំណាយ</span>
+                    <span className="hidden md:inline text-[10px] opacity-80">(Spending)</span>
+                  </button>
 
-              <Link
-                href="/journal"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
-                  activeTab === "journal"
-                    ? "bg-emerald-500 text-slate-950 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                <span>📈 Trading Journal</span>
-              </Link>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick("journal")}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      activeTab === "journal"
+                        ? "bg-emerald-500 text-slate-950 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>📈 Trading Journal</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/"
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      activeTab === "habits"
+                        ? "bg-emerald-500 text-slate-950 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>🎯 ទម្លាប់</span>
+                    <span className="hidden md:inline text-[10px] opacity-80">(Habits)</span>
+                  </Link>
+
+                  <Link
+                    href="/spending"
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      activeTab === "spending"
+                        ? "bg-emerald-500 text-slate-950 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>💰 ចំណាយ</span>
+                    <span className="hidden md:inline text-[10px] opacity-80">(Spending)</span>
+                  </Link>
+
+                  <Link
+                    href="/journal"
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      activeTab === "journal"
+                        ? "bg-emerald-500 text-slate-950 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>📈 Trading Journal</span>
+                  </Link>
+                </>
+              )}
+            </nav>
           </div>
 
           {/* Month / Cycle Navigator */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-lg border border-gray-200 dark:border-gray-800 text-xs sm:text-sm">
-              <button
-                onClick={onPrevMonth}
-                className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
-                title={isCustomCycle ? "វដ្តមុន" : "ខែមុន"}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#181a24] p-1 rounded-xl border border-gray-200 dark:border-gray-800 text-xs sm:text-sm">
+            <button
+              onClick={onPrevMonth}
+              className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors"
+              title={isCustomCycle ? "វដ្តមុន" : "ខែមុន"}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
 
-              <span className="font-semibold text-gray-800 dark:text-white px-2 sm:px-3 text-center min-w-[105px] sm:min-w-[135px] select-none text-xs sm:text-sm">
-                {dateRangeLabel || monthYearString}
-              </span>
+            <span className="font-bold text-gray-800 dark:text-white px-2 sm:px-3 text-center min-w-[95px] sm:min-w-[130px] select-none text-xs sm:text-sm">
+              {dateRangeLabel || monthYearString}
+            </span>
 
-              <button
-                onClick={onNextMonth}
-                className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
-                title={isCustomCycle ? "វដ្តបន្ទាប់" : "ខែបន្ទាប់"}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+            <button
+              onClick={onNextMonth}
+              className="p-1 sm:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors"
+              title={isCustomCycle ? "វដ្តបន្ទាប់" : "ខែបន្ទាប់"}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
 
-              <button
-                onClick={onGoToToday}
-                className="ml-0.5 px-2 py-1 text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors flex items-center gap-1"
-                title="ត្រឡប់មកថ្ងៃនេះវិញ"
-              >
-                <Calendar className="w-3 h-3" />
-                <span>ថ្ងៃនេះ</span>
-              </button>
-            </div>
-
-            {/* Starting Day & Cycle Configuration Button */}
-            {onOpenStartingDayModal && (
-              <button
-                onClick={onOpenStartingDayModal}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-sm ${
-                  isCustomCycle
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
-                    : "bg-white dark:bg-[#181a24] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-emerald-500/40"
-                }`}
-                title="កំណត់ថ្ងៃចាប់ផ្តើម និងចំនួនថ្ងៃតាមដាន"
-              >
-                <CalendarDays className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="hidden sm:inline">ថ្ងៃចាប់ផ្តើម</span>
-                {isCustomCycle && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                )}
-              </button>
-            )}
+            <button
+              onClick={onGoToToday}
+              className="ml-0.5 px-2 py-1 text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1"
+              title="ត្រឡប់មកថ្ងៃនេះវិញ"
+            >
+              <Calendar className="w-3 h-3" />
+              <span>ថ្ងៃនេះ</span>
+            </button>
           </div>
 
-          {/* Right Section: Local Excel Storage, Google Sign-in, Theme Switcher */}
-          <div className="flex items-center gap-2">
+          {/* Right System Controls: Excel Storage, Starting Day, Auth, Theme */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            
             {/* Local Excel Storage Connection Button */}
             {onOpenExcelModal && (
               <button
@@ -243,7 +299,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onOpenExcelModal();
                   }
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm ${
                   excelStorageState?.isConnected
                     ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
                     : excelStorageState?.needsPermission
@@ -259,13 +315,13 @@ export const Header: React.FC<HeaderProps> = ({
                 }
               >
                 <FileSpreadsheet
-                  className={`w-4 h-4 ${
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
                     excelStorageState?.isConnected
                       ? "text-emerald-500"
                       : "text-slate-950"
                   }`}
                 />
-                <span className="max-w-[120px] sm:max-w-[160px] truncate">
+                <span className="max-w-[100px] sm:max-w-[140px] truncate">
                   {excelStorageState?.isConnected
                     ? excelStorageState.isSyncing
                       ? "កំពុង Save..."
@@ -286,7 +342,26 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Google Sign-in (optional) */}
+            {/* Starting Day & Cycle Configuration Button (Shown for Habits and Spending) */}
+            {onOpenStartingDayModal && (
+              <button
+                onClick={onOpenStartingDayModal}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-sm ${
+                  isCustomCycle
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+                    : "bg-white dark:bg-[#181a24] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-emerald-500/40"
+                }`}
+                title="កំណត់ថ្ងៃចាប់ផ្តើម និងចំនួនថ្ងៃតាមដាន"
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="hidden sm:inline">ថ្ងៃចាប់ផ្តើម</span>
+                {isCustomCycle && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                )}
+              </button>
+            )}
+
+            {/* Google Sign-in */}
             <GoogleAuthButton
               user={user}
               syncStatus={syncStatus}
@@ -299,28 +374,22 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onToggleTheme}
               title={theme === "dark" ? "ប្តូរទៅ Light Mode" : "ប្តូរទៅ Dark Mode"}
-              className="p-2 bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm"
+              className="p-1.5 sm:p-2 bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg text-xs transition-all flex items-center justify-center shadow-sm"
             >
               {theme === "dark" ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-400" />
-                  <span className="hidden sm:inline text-xs font-medium">ពន្លឺ</span>
-                </>
+                <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <>
-                  <Moon className="w-4 h-4 text-slate-700" />
-                  <span className="hidden sm:inline text-xs font-medium">ងងឹត</span>
-                </>
+                <Moon className="w-4 h-4 text-slate-700" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Bottom Bar: Action Buttons & Statistics Overview */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-gray-800/60">
+        {/* ROW 2: Primary Actions & Contextual Statistics (Clean, Non-wrapping 2-Row Design) */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1.5 border-t border-gray-100 dark:border-gray-800/60">
           
-          {/* Action Buttons: Add Habit, Export Excel, Export/Import JSON, Reset */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Left Action Buttons: Hero CTA + Extra + Unified Data Menu */}
+          <div className="flex items-center gap-2">
             <button
               onClick={onOpenAddHabit}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition-all shadow-sm active:scale-95"
@@ -329,35 +398,90 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{displayAddLabel}</span>
             </button>
 
-            {/* Direct Export to Excel (.xlsx) */}
-            {onExportExcel && (
+            {extraActionButtons}
+
+            {/* Unified Data Dropdown (Consolidating Export Excel, Export JSON, Import JSON, Reset) */}
+            <div className="relative" ref={dataMenuRef}>
               <button
-                onClick={onExportExcel}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-colors"
-                title="ទាញយកទិន្នន័យជាឯកសារ Excel (.xlsx)"
+                type="button"
+                onClick={() => setIsDataMenuOpen((prev) => !prev)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 text-xs font-semibold transition-all shadow-sm"
+                title="ជម្រើសទិន្នន័យ (Excel, Backup, Reset)"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Export Excel (.xlsx)</span>
+                <Settings2 className="w-3.5 h-3.5 text-gray-500" />
+                <span>ទិន្នន័យ (Data)</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
               </button>
-            )}
 
-            <button
-              onClick={onExportData}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 text-xs font-medium transition-colors"
-              title="ទាញយកឯកសារ Backup"
-            >
-              <Download className="w-3.5 h-3.5 text-gray-500" />
-              <span className="hidden sm:inline">Export JSON</span>
-            </button>
+              {isDataMenuOpen && (
+                <div className="absolute left-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-[#181a24] border border-gray-200 dark:border-gray-800 shadow-2xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95">
+                  {onExportExcel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDataMenuOpen(false);
+                        onExportExcel();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-gray-700 dark:text-gray-200 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Export Excel (.xlsx)</div>
+                        <div className="text-[10px] text-gray-400">ទាញយកឯកសារ Excel</div>
+                      </div>
+                    </button>
+                  )}
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 text-xs font-medium transition-colors"
-              title="បញ្ចូលឯកសារ Backup មកវិញ"
-            >
-              <Upload className="w-3.5 h-3.5 text-gray-500" />
-              <span className="hidden sm:inline">Import JSON</span>
-            </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDataMenuOpen(false);
+                      onExportData();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors font-medium"
+                  >
+                    <Download className="w-4 h-4 text-gray-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Export JSON</div>
+                      <div className="text-[10px] text-gray-400">ទាញយក Backup កម្មវិធី</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDataMenuOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors font-medium"
+                  >
+                    <Upload className="w-4 h-4 text-gray-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Import JSON</div>
+                      <div className="text-[10px] text-gray-400">បញ្ចូលទិន្នន័យពី Backup</div>
+                    </div>
+                  </button>
+
+                  <div className="h-px bg-gray-200 dark:bg-gray-800 my-1" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDataMenuOpen(false);
+                      onResetData();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors font-medium"
+                  >
+                    <RotateCcw className="w-4 h-4 text-red-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold">កំណត់ឡើងវិញ (Reset)</div>
+                      <div className="text-[10px] text-red-400/80">លុប និងដាក់លំនាំដើម</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <input
               type="file"
               ref={fileInputRef}
@@ -365,41 +489,30 @@ export const Header: React.FC<HeaderProps> = ({
               accept=".json"
               className="hidden"
             />
-
-            <button
-              onClick={onResetData}
-              className="p-1.5 rounded-lg bg-gray-100 dark:bg-[#181a24] hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-500 hover:text-red-500 border border-gray-200 dark:border-gray-800 transition-colors"
-              title="កំណត់ទិន្នន័យឡើងវិញទៅលំនាំដើម"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
           </div>
 
-          {/* Quick Statistics Overview Pills */}
+          {/* Right Statistics / KPI Pills (Contextual per Active Tab) */}
           {statPills ? (
             statPills
-          ) : (
+          ) : activeTab === "habits" ? (
             <div className="flex items-center gap-2 sm:gap-3 text-xs">
-              {/* Total Habits */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#181a24] border border-gray-200 dark:border-gray-800">
                 <span className="text-gray-500 dark:text-gray-400">សរុប:</span>
                 <span className="font-bold text-gray-900 dark:text-white">{totalHabits} ទម្លាប់</span>
               </div>
 
-              {/* Today's Rate */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 <span className="hidden sm:inline">ថ្ងៃនេះ:</span>
                 <span className="font-extrabold">{todayPercentage}%</span>
               </div>
 
-              {/* Cycle / Month Average Rate */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-400">
                 <span className="hidden sm:inline">{isCustomCycle ? "មធ្យមវដ្ត:" : "មធ្យមខែ:"}</span>
                 <span className="font-extrabold">{monthAveragePercentage}%</span>
               </div>
             </div>
-          )}
+          ) : null}
 
         </div>
 
