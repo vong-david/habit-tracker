@@ -53,6 +53,7 @@ import {
   formatPnl,
   SAMPLE_TRADES,
 } from "@/lib/tradingStorage";
+import { deleteTradeImage } from "@/lib/tradeImageStorage";
 import {
   getDaysInMonth,
   getDaysForCycle,
@@ -667,6 +668,13 @@ export const UnifiedTrackerApp: React.FC<UnifiedTrackerAppProps> = ({
   };
 
   const handleDeleteTrade = (tradeId: string) => {
+    if (!confirm("តើអ្នកប្រាកដជាចង់លុប Trade នេះមែនទេ?")) return;
+    const target = trades.find((t) => t.id === tradeId);
+    if (target?.imageUrls) {
+      target.imageUrls.forEach((imgId) => {
+        deleteTradeImage(imgId).catch(() => {});
+      });
+    }
     const next = trades.filter((t) => t.id !== tradeId);
     setTrades(next);
     saveTrades(next, user?.id);
@@ -922,6 +930,24 @@ export const UnifiedTrackerApp: React.FC<UnifiedTrackerAppProps> = ({
     const filtered = trades.filter((t) => t.dateString.startsWith(monthKey));
     return calculateTradingStats(filtered);
   }, [trades, year, month]);
+
+  // Derive active day summary dynamically from trades so delete/add/edit updates immediately!
+  const activeDaySummary = useMemo<DayTradesSummary | null>(() => {
+    if (!selectedDaySummary) return null;
+    const dateTrades = trades.filter((t) => t.dateString === selectedDaySummary.dateString);
+    const totalPnl = Number(dateTrades.reduce((acc, curr) => acc + curr.pnl, 0).toFixed(2));
+    const winningCount = dateTrades.filter((t) => t.pnl > 0).length;
+    const losingCount = dateTrades.filter((t) => t.pnl < 0).length;
+
+    return {
+      ...selectedDaySummary,
+      trades: dateTrades,
+      tradesCount: dateTrades.length,
+      totalPnl,
+      winningCount,
+      losingCount,
+    };
+  }, [selectedDaySummary, trades]);
 
   // Render context-specific Stat Pills in Header
   const renderHeaderStatPills = () => {
@@ -1434,14 +1460,14 @@ export const UnifiedTrackerApp: React.FC<UnifiedTrackerAppProps> = ({
       />
 
       {/* -------------------- TRADING MODALS -------------------- */}
-      {selectedDaySummary && (
+      {activeDaySummary && (
         <DayTradesDetailModal
           isOpen={isDayDetailModalOpen}
           onClose={() => {
             setIsDayDetailModalOpen(false);
             setSelectedDaySummary(null);
           }}
-          daySummary={selectedDaySummary}
+          daySummary={activeDaySummary}
           onOpenAddTrade={(dateStr) => {
             setIsDayDetailModalOpen(false);
             setTradeToEdit(null);
