@@ -9,7 +9,7 @@ function getScopedKey(baseKey: string, userId?: string): string {
 export const SAMPLE_TRADES: Trade[] = [
   {
     id: "trade_sample_0",
-    account: "Thun Tula",
+    account: "Funded",
     symbol: "XAUUSD",
     dateString: "2026-11-18",
     closeDateString: "2026-11-18",
@@ -19,8 +19,8 @@ export const SAMPLE_TRADES: Trade[] = [
     entryConfluences: [
       "Liquidity Sweep",
       "HTF-Bias",
-      "Sell-Side Imbalance Buy-Side Inefficiency (SIBI)",
-      "FVG/ Silver Bullet 09:00 PM – 10:00 PM",
+      "Sell-Side Imbalance (SIBI)",
+      "Silver Bullet (NY)",
     ],
     riskReward: "1:4R",
     profit: 1490.0,
@@ -33,12 +33,12 @@ export const SAMPLE_TRADES: Trade[] = [
     exitPrice: 2600.6,
     setup: "Silver Bullet / SIBI",
     mistake: "Followed Rules 100%",
-    notes: "Trade យ៉ាងល្អឥតខ្ចោះតាម Notion System! London liquidity sweep រួច sell ចំ NY Silver Bullet window",
+    notes: "Trade យ៉ាងល្អឥតខ្ចោះតាម Setup! London liquidity sweep រួច sell ចំ NY Silver Bullet window",
     createdAt: new Date().toISOString(),
   },
   {
     id: "trade_sample_1",
-    account: "Thun Tula",
+    account: "Live",
     dateString: "2026-11-17",
     closeDateString: "2026-11-17",
     time: "09:45",
@@ -62,7 +62,7 @@ export const SAMPLE_TRADES: Trade[] = [
   },
   {
     id: "trade_sample_2",
-    account: "Personal",
+    account: "Funded",
     dateString: "2026-11-17",
     closeDateString: "2026-11-17",
     time: "14:15",
@@ -86,7 +86,7 @@ export const SAMPLE_TRADES: Trade[] = [
   },
   {
     id: "trade_sample_3",
-    account: "Thun Tula",
+    account: "Live",
     dateString: "2026-11-16",
     closeDateString: "2026-11-16",
     time: "10:30",

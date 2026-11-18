@@ -344,7 +344,7 @@ export function buildExcelWorkbook(
 
       return [
         t.id,
-        t.account || "-",
+        t.account || "Funded",
         t.symbol,
         t.dateString,
         t.closeDateString || t.dateString,

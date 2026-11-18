@@ -78,11 +78,11 @@ export const DayTradesDetailModal: React.FC<DayTradesDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#151722] border border-gray-200 dark:border-gray-800 w-full max-w-2xl rounded-3xl p-5 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto text-left"
+        className="bg-white dark:bg-[#12141c] border border-gray-200 dark:border-gray-800 w-full max-w-3xl lg:max-w-4xl rounded-3xl p-6 sm:p-8 shadow-2xl relative max-h-[92vh] overflow-y-auto text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -180,12 +180,19 @@ export const DayTradesDetailModal: React.FC<DayTradesDetailModalProps> = ({
                   {/* Row 1: Account, Pair, Direction, Session, Discipline, Net P&L, Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {/* Account */}
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-gray-200/80 dark:bg-gray-800 text-gray-800 dark:text-gray-200 flex items-center gap-1">
-                        <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center justify-center text-[10px]">
-                          {(trade.account || "T")[0]}
+                      {/* Account: Funded or Live */}
+                      <span
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-lg border flex items-center gap-1.5 ${
+                          (trade.account || "Funded").toLowerCase().includes("live")
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                            : "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                        }`}
+                      >
+                        <span>
+                          {(trade.account || "Funded").toLowerCase().includes("live")
+                            ? "🟢 Live"
+                            : "💼 Funded"}
                         </span>
-                        <span>{trade.account || "Thun Tula"}</span>
                       </span>
 
                       {/* Pair / Symbol */}
