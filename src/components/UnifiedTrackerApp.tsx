@@ -77,6 +77,8 @@ import { Header } from "@/components/Header";
 // Habit Tracker components
 import { DailyProgressBarChart, DailyProgressData } from "@/components/DailyProgressBarChart";
 import { WeeklyProgressBarChart } from "@/components/WeeklyProgressBarChart";
+import { GamifiedHabitDashboard } from "@/components/GamifiedHabitDashboard";
+import { HabitAnalysisTable } from "@/components/HabitAnalysisTable";
 import { HabitGrid } from "@/components/HabitGrid";
 import { WellnessTracker } from "@/components/WellnessTracker";
 import { AddHabitModal } from "@/components/AddHabitModal";
@@ -1121,30 +1123,43 @@ export const UnifiedTrackerApp: React.FC<UnifiedTrackerAppProps> = ({
         {/* ======================= TAB 1: HABITS ======================= */}
         {activeTab === "habits" && (
           <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-150">
-            {/* Daily & Weekly Progress Bar Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              <div className="lg:col-span-2">
-                <DailyProgressBarChart data={dailyChartData} theme={theme} />
-              </div>
-              <div>
-                <WeeklyProgressBarChart data={weeklyChartData} theme={theme} />
-              </div>
-            </div>
-
-            {/* Habit Grid Tracker */}
-            <HabitGrid
+            {/* Gamified Progress Dashboard (Chart + Goal/Completed/Left KPIs + Overall Stats Donut) */}
+            <GamifiedHabitDashboard
               habits={habits}
               days={days}
               weeks={weeks}
               completions={completions}
-              habitNotes={habitNotes}
-              onToggleHabit={handleToggleHabit}
-              onEditHabit={(h) => setEditingHabit(h)}
-              onDeleteHabit={handleDeleteHabit}
-              onMoveHabit={handleMoveHabit}
-              onReorderHabits={handleReorderHabits}
-              onOpenNoteModal={(habit, day) => setActiveNoteTarget({ habit, day })}
+              dailyChartData={dailyChartData}
+              weeklyChartData={weeklyChartData}
+              theme={theme}
             />
+
+            {/* Habit Grid Tracker & Analysis Table (Matching Excel Layout) */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
+              <div className="xl:col-span-8">
+                <HabitGrid
+                  habits={habits}
+                  days={days}
+                  weeks={weeks}
+                  completions={completions}
+                  habitNotes={habitNotes}
+                  onToggleHabit={handleToggleHabit}
+                  onEditHabit={(h) => setEditingHabit(h)}
+                  onDeleteHabit={handleDeleteHabit}
+                  onMoveHabit={handleMoveHabit}
+                  onReorderHabits={handleReorderHabits}
+                  onOpenNoteModal={(habit, day) => setActiveNoteTarget({ habit, day })}
+                />
+              </div>
+
+              <div className="xl:col-span-4">
+                <HabitAnalysisTable
+                  habits={habits}
+                  days={days}
+                  completions={completions}
+                />
+              </div>
+            </div>
 
             {/* Wellness Tracker Section */}
             <WellnessTracker
