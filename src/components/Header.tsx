@@ -31,8 +31,10 @@ interface HeaderProps {
   onOpenStartingDayModal?: () => void;
   excelStorageState?: {
     isConnected: boolean;
+    needsPermission?: boolean;
     fileName: string | null;
     isSyncing?: boolean;
+    onReAuthorize?: () => void;
   };
   onOpenExcelModal?: () => void;
   onExportExcel?: () => void;
@@ -234,30 +236,52 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Local Excel Storage Connection Button */}
             {onOpenExcelModal && (
               <button
-                onClick={onOpenExcelModal}
+                onClick={() => {
+                  if (excelStorageState?.needsPermission && excelStorageState.onReAuthorize) {
+                    excelStorageState.onReAuthorize();
+                  } else {
+                    onOpenExcelModal();
+                  }
+                }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm ${
                   excelStorageState?.isConnected
                     ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                    : excelStorageState?.needsPermission
+                    ? "bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold active:scale-95 animate-pulse"
                     : "bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold active:scale-95"
                 }`}
                 title={
                   excelStorageState?.isConnected
                     ? `ឯកសារ Excel: ${excelStorageState.fileName} (ចុចដើម្បីគ្រប់គ្រង)`
+                    : excelStorageState?.needsPermission
+                    ? `ចុចទីនេះដើម្បីបន្ត Auto-Save ទៅកាន់ ${excelStorageState.fileName}`
                     : "ភ្ជាប់ឯកសារ Excel (.xlsx) លើម៉ាស៊ីន"
                 }
               >
                 <FileSpreadsheet
                   className={`w-4 h-4 ${
-                    excelStorageState?.isConnected ? "text-emerald-500" : "text-slate-950"
+                    excelStorageState?.isConnected
+                      ? "text-emerald-500"
+                      : "text-slate-950"
                   }`}
                 />
-                <span className="max-w-[100px] sm:max-w-[130px] truncate">
+                <span className="max-w-[120px] sm:max-w-[160px] truncate">
                   {excelStorageState?.isConnected
-                    ? excelStorageState.fileName || "Excel Linked"
+                    ? excelStorageState.isSyncing
+                      ? "កំពុង Save..."
+                      : excelStorageState.fileName || "Excel Linked"
+                    : excelStorageState?.needsPermission
+                    ? `⚠️ បន្ត Save (${excelStorageState.fileName})`
                     : "ភ្ជាប់ Excel"}
                 </span>
                 {excelStorageState?.isConnected && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                  <span
+                    className={`w-2 h-2 rounded-full inline-block ${
+                      excelStorageState.isSyncing
+                        ? "bg-amber-500 animate-spin"
+                        : "bg-emerald-500 animate-pulse"
+                    }`}
+                  />
                 )}
               </button>
             )}
@@ -378,6 +402,30 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
         </div>
+
+        {/* Warning banner when Excel file needs re-authorization after browser restart */}
+        {excelStorageState?.needsPermission && (
+          <div className="bg-amber-500/15 border border-amber-500/30 rounded-2xl px-3.5 py-2.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚠️</span>
+              <span>
+                ឯកសារ Excel <strong>"{excelStorageState.fileName}"</strong> ត្រូវបានរកឃើញ! សូមចុចប៊ូតុងដើម្បីអនុញ្ញាត Auto-Save បន្តទៅកាន់ឯកសាររបស់អ្នក (ការពារកុំឱ្យបាត់ទិន្នន័យ)។
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                if (excelStorageState.onReAuthorize) {
+                  excelStorageState.onReAuthorize();
+                } else if (onOpenExcelModal) {
+                  onOpenExcelModal();
+                }
+              }}
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold rounded-xl transition-all text-xs shrink-0 ml-3 shadow-sm"
+            >
+              អនុញ្ញាត Auto-Save ឥឡូវនេះ
+            </button>
+          </div>
+        )}
 
       </div>
     </header>

@@ -15,6 +15,7 @@ import {
   writeToExcelFileHandle,
   downloadExcelFile,
   getStoredHandle,
+  requestFileHandlePermission,
   parseExcelFileData,
   UnifiedSpendingData,
 } from "@/lib/excelStorage";
@@ -63,12 +64,14 @@ export default function TradingJournalPage() {
   // Local Excel File Storage State (Shared across Habits, Spending, and Journal)
   const [excelState, setExcelState] = useState<{
     isConnected: boolean;
+    needsPermission?: boolean;
     fileName: string | null;
     fileHandle: FileSystemFileHandle | null;
     lastSyncedAt: string | null;
     isSyncing: boolean;
   }>({
     isConnected: false,
+    needsPermission: false,
     fileName: null,
     fileHandle: null,
     lastSyncedAt: null,
@@ -105,9 +108,19 @@ export default function TradingJournalPage() {
           if (perm === "granted") {
             setExcelState({
               isConnected: true,
+              needsPermission: false,
               fileName: handle.name,
               fileHandle: handle,
               lastSyncedAt: new Date().toLocaleTimeString(),
+              isSyncing: false,
+            });
+          } else {
+            setExcelState({
+              isConnected: false,
+              needsPermission: true,
+              fileName: handle.name,
+              fileHandle: handle,
+              lastSyncedAt: null,
               isSyncing: false,
             });
           }
@@ -378,6 +391,55 @@ export default function TradingJournalPage() {
     }
   };
 
+  // Re-grant permission for previously connected Excel file
+  const handleReAuthorizeExcel = async () => {
+    if (!excelState.fileHandle) {
+      setIsExcelModalOpen(true);
+      return;
+    }
+    try {
+      const granted = await requestFileHandlePermission(excelState.fileHandle);
+      if (granted) {
+        setExcelState((prev) => ({
+          ...prev,
+          isConnected: true,
+          needsPermission: false,
+          lastSyncedAt: new Date().toLocaleTimeString(),
+        }));
+        // Immediate sync to Excel!
+        const currentHabits = loadHabits(user?.id);
+        const currentCompletions = loadCompletions(user?.id);
+        const currentWellness = loadWellness(user?.id);
+        const currentNotes = loadHabitNotes(user?.id);
+        const currentCycle = loadCycleConfig(user?.id) || { mode: "full_month" };
+        const currentDays = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const currentRangeLabel = getKhmerDateRangeLabel(currentDays);
+        const spendingData: UnifiedSpendingData = {
+          categories: loadSpendingCategories(user?.id),
+          transactions: loadSpendingTransactions(user?.id),
+          budgetConfig: loadSpendingBudget(user?.id),
+        };
+        await writeToExcelFileHandle(
+          excelState.fileHandle,
+          currentHabits,
+          currentCompletions,
+          currentWellness,
+          currentDays,
+          currentRangeLabel,
+          currentCycle,
+          currentNotes,
+          spendingData,
+          trades
+        );
+      } else {
+        setIsExcelModalOpen(true);
+      }
+    } catch (err) {
+      console.warn("Re-authorization failed", err);
+      setIsExcelModalOpen(true);
+    }
+  };
+
   // Google Auth Handlers
   const handleLogin = (newUser: UserProfile) => {
     setUser(newUser);
@@ -404,8 +466,10 @@ export default function TradingJournalPage() {
         currentDate={currentDate}
         excelStorageState={{
           isConnected: excelState.isConnected,
+          needsPermission: excelState.needsPermission,
           fileName: excelState.fileName,
           isSyncing: excelState.isSyncing,
+          onReAuthorize: handleReAuthorizeExcel,
         }}
         onOpenExcelModal={() => setIsExcelModalOpen(true)}
         onExportExcel={handleExportExcel}

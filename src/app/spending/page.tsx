@@ -46,6 +46,7 @@ import {
   writeToExcelFileHandle,
   downloadExcelFile,
   getStoredHandle,
+  requestFileHandlePermission,
   UnifiedSpendingData,
   parseExcelFileData,
 } from "@/lib/excelStorage";
@@ -72,12 +73,14 @@ export default function SpendingPage() {
   // Local Excel File Storage State
   const [excelState, setExcelState] = useState<{
     isConnected: boolean;
+    needsPermission?: boolean;
     fileName: string | null;
     fileHandle: FileSystemFileHandle | null;
     lastSyncedAt: string | null;
     isSyncing: boolean;
   }>({
     isConnected: false,
+    needsPermission: false,
     fileName: null,
     fileHandle: null,
     lastSyncedAt: null,
@@ -85,8 +88,8 @@ export default function SpendingPage() {
   });
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
-  // Cycle Configuration
-  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "today_to_end" });
+  // Cycle Configuration (Defaults to full_month so yesterday & old data are NEVER hidden)
+  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "full_month" });
   const [customCycleStartDate, setCustomCycleStartDate] = useState<Date>(new Date());
   const [isStartingDayModalOpen, setIsStartingDayModalOpen] = useState(false);
 
@@ -123,7 +126,7 @@ export default function SpendingPage() {
         setCustomCycleStartDate(new Date(y, m - 1, d));
       }
     } else {
-      setCycleConfig({ mode: "today_to_end" });
+      setCycleConfig({ mode: "full_month" });
     }
 
     // Check saved Excel file handle (shared across Habits and Spending)
@@ -135,9 +138,20 @@ export default function SpendingPage() {
           if (perm === "granted") {
             setExcelState({
               isConnected: true,
+              needsPermission: false,
               fileName: handle.name,
               fileHandle: handle,
               lastSyncedAt: new Date().toLocaleTimeString(),
+              isSyncing: false,
+            });
+          } else {
+            // Browser restarted: handle exists but needs 1 user click to re-grant write permission
+            setExcelState({
+              isConnected: false,
+              needsPermission: true,
+              fileName: handle.name,
+              fileHandle: handle,
+              lastSyncedAt: null,
               isSyncing: false,
             });
           }
@@ -178,33 +192,72 @@ export default function SpendingPage() {
   const month = currentDate.getMonth();
   const isCustomCycle = cycleConfig.mode !== "full_month";
 
-  // Days in view
+  // Days in view (Defaults to full_month so yesterday & all past spending are ALWAYS visible)
   const days = useMemo(() => {
-    const today = new Date();
-    const isViewingCurrentMonth =
-      today.getFullYear() === currentDate.getFullYear() &&
-      today.getMonth() === currentDate.getMonth();
-
     if (cycleConfig.mode === "consecutive_days") {
       return getDaysForCycle(customCycleStartDate, cycleConfig.durationDays || 30);
     }
 
-    if (cycleConfig.mode === "today_to_end") {
-      const startDay = isViewingCurrentMonth ? today.getDate() : 1;
-      return getDaysInMonth(year, month, startDay);
+    if (cycleConfig.mode === "custom_start_day" && cycleConfig.startDay) {
+      return getDaysInMonth(year, month, cycleConfig.startDay);
     }
 
-    if (cycleConfig.mode === "custom_start_day") {
-      const startDay = cycleConfig.startDay || (isViewingCurrentMonth ? today.getDate() : 1);
-      return getDaysInMonth(year, month, startDay);
-    }
-
+    // Default: full_month (from day 1 to end of month)
+    // Ensures all days of the month (including yesterday and past data) are ALWAYS visible!
     return getDaysInMonth(year, month, 1);
-  }, [cycleConfig, customCycleStartDate, year, month, currentDate]);
+  }, [cycleConfig, customCycleStartDate, year, month]);
 
   const dateRangeLabel = useMemo(() => {
     return getKhmerDateRangeLabel(days);
   }, [days]);
+
+  // Re-grant permission for previously connected Excel file
+  const handleReAuthorizeExcel = async () => {
+    if (!excelState.fileHandle) {
+      setIsExcelModalOpen(true);
+      return;
+    }
+    try {
+      const granted = await requestFileHandlePermission(excelState.fileHandle);
+      if (granted) {
+        setExcelState((prev) => ({
+          ...prev,
+          isConnected: true,
+          needsPermission: false,
+          lastSyncedAt: new Date().toLocaleTimeString(),
+        }));
+        // Immediate sync to Excel!
+        const currentHabits = loadHabits(user?.id);
+        const currentCompletions = loadCompletions(user?.id);
+        const currentWellness = loadWellness(user?.id);
+        const currentNotes = loadHabitNotes(user?.id);
+        const currentCycle = loadCycleConfig(user?.id) || cycleConfig;
+        const currentTrades = loadTrades(user?.id);
+
+        await writeToExcelFileHandle(
+          excelState.fileHandle,
+          currentHabits,
+          currentCompletions,
+          currentWellness,
+          days,
+          dateRangeLabel,
+          currentCycle,
+          currentNotes,
+          {
+            categories,
+            transactions,
+            budgetConfig,
+          },
+          currentTrades
+        );
+      } else {
+        setIsExcelModalOpen(true);
+      }
+    } catch (err) {
+      console.warn("Re-authorization failed", err);
+      setIsExcelModalOpen(true);
+    }
+  };
 
   // Auto-sync to Linked Excel file (.xlsx) - Preserves both Habits and Spending
   useEffect(() => {
@@ -594,7 +647,10 @@ export default function SpendingPage() {
         dateRangeLabel={dateRangeLabel}
         isCustomCycle={isCustomCycle}
         onOpenStartingDayModal={() => setIsStartingDayModalOpen(true)}
-        excelStorageState={excelState}
+        excelStorageState={{
+          ...excelState,
+          onReAuthorize: handleReAuthorizeExcel,
+        }}
         onOpenExcelModal={() => setIsExcelModalOpen(true)}
         onExportExcel={handleExportExcel}
         theme={theme}

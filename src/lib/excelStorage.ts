@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import { Habit, HabitCompletionMap, WellnessMap, DayInfo, TrackerCycleConfig, HabitNotesMap } from "@/types/habit";
 import { SpendingCategory, SpendingTransaction, SpendingBudgetConfig } from "@/types/spending";
 import { Trade } from "@/types/trading";
+import { getDaysInMonth } from "@/lib/dateUtils";
 
 export interface UnifiedSpendingData {
   categories: SpendingCategory[];
@@ -11,6 +12,7 @@ export interface UnifiedSpendingData {
 
 export interface ExcelStorageState {
   isConnected: boolean;
+  needsPermission?: boolean;
   fileName: string | null;
   lastSyncedAt: string | null;
   fileHandle: FileSystemFileHandle | null;
@@ -91,6 +93,23 @@ export async function clearStoredHandle(): Promise<void> {
 }
 
 /**
+ * Request or verify permission for a FileSystemFileHandle
+ */
+export async function requestFileHandlePermission(handle: FileSystemFileHandle): Promise<boolean> {
+  try {
+    // @ts-ignore
+    const perm = await handle.queryPermission({ mode: "readwrite" });
+    if (perm === "granted") return true;
+    // @ts-ignore
+    const req = await handle.requestPermission({ mode: "readwrite" });
+    return req === "granted";
+  } catch (err) {
+    console.warn("Could not request file handle permission", err);
+    return false;
+  }
+}
+
+/**
  * Build XLSX Workbook from Habit Tracker & Daily Spending data
  */
 export function buildExcelWorkbook(
@@ -106,20 +125,29 @@ export function buildExcelWorkbook(
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
+  // Always use the full month (day 1 to 28/30/31) for Excel sheets so NO days (past days, yesterday, or future days) are ever dropped from Excel!
+  let excelDays = days;
+  if (days.length > 0 && days[0].date && cycleConfig?.mode !== "consecutive_days") {
+    const firstDate = days[0].date;
+    const year = firstDate.getFullYear();
+    const month = firstDate.getMonth();
+    excelDays = getDaysInMonth(year, month, 1);
+  }
+
   // 1. Sheet: Habit Tracker
-  const row1 = [`Habit Tracker - ${label}`, ...new Array(days.length + 3).fill("")];
+  const row1 = [`Habit Tracker - ${label}`, ...new Array(excelDays.length + 3).fill("")];
   const headerRow = [
     "ID",
     "ទម្លាប់ (Habit)",
     "ប្រភេទ (Category)",
-    ...days.map((d) => `${d.dayOfWeek} ${d.dayNumber}`),
+    ...excelDays.map((d) => `${d.dayOfWeek} ${d.dayNumber}`),
     "សម្រេច (Done)",
     "អត្រា % (Rate)",
   ];
 
   const habitRows = habits.map((habit) => {
     let doneCount = 0;
-    const dayCells = days.map((day) => {
+    const dayCells = excelDays.map((day) => {
       const key = `${habit.id}_${day.dateString}`;
       const isDone = !!completions[key];
       const note = notes?.[key];
@@ -127,7 +155,7 @@ export function buildExcelWorkbook(
       return isDone ? (note ? `✓ [${note}]` : "✓") : (note ? `[${note}]` : "");
     });
 
-    const rate = days.length > 0 ? Math.round((doneCount / days.length) * 100) : 0;
+    const rate = excelDays.length > 0 ? Math.round((doneCount / excelDays.length) * 100) : 0;
     return [habit.id, `${habit.icon} ${habit.name}`, habit.category, ...dayCells, doneCount, `${rate}%`];
   });
 
@@ -136,14 +164,14 @@ export function buildExcelWorkbook(
   XLSX.utils.book_append_sheet(wb, habitSheet, "Habit Tracker");
 
   // 2. Sheet: Overall Wellness
-  const wellnessHeader = ["រង្វាស់ (Metric)", ...days.map((d) => `ថ្ងៃទី ${d.dayNumber}`)];
+  const wellnessHeader = ["រង្វាស់ (Metric)", ...excelDays.map((d) => `ថ្ងៃទី ${d.dayNumber}`)];
   const moodRow = [
     "អារម្មណ៍ (Mood 1-5)",
-    ...days.map((d) => wellness[d.dateString]?.mood ?? "-"),
+    ...excelDays.map((d) => wellness[d.dateString]?.mood ?? "-"),
   ];
   const sleepRow = [
     "ម៉ោងគេង (Sleep Hours)",
-    ...days.map((d) => (wellness[d.dateString]?.sleepHours ? `${wellness[d.dateString]?.sleepHours}h` : "-")),
+    ...excelDays.map((d) => (wellness[d.dateString]?.sleepHours ? `${wellness[d.dateString]?.sleepHours}h` : "-")),
   ];
 
   const wellnessDataValues = [wellnessHeader, moodRow, sleepRow];
@@ -167,24 +195,24 @@ export function buildExcelWorkbook(
 
     const spendRow1 = [
       `Daily Spending Tracker - ${label} (អត្រាប្តូរប្រាក់ 1$ = ${rate.toLocaleString()} ៛)`,
-      ...new Array(days.length + 4).fill(""),
+      ...new Array(excelDays.length + 4).fill(""),
     ];
 
     const spendHeaderRow = [
       "ID",
       "ប្រភេទចំណាយ (Category)",
       "ថវិកា (Budget)",
-      ...days.map((d) => `${d.dayOfWeek} ${d.dayNumber}`),
+      ...excelDays.map((d) => `${d.dayOfWeek} ${d.dayNumber}`),
       "សរុប ($ USD)",
       "សរុប (៛ KHR)",
     ];
 
     let grandTotalUsd = 0;
-    const dayTotalsUsd: number[] = new Array(days.length).fill(0);
+    const dayTotalsUsd: number[] = new Array(excelDays.length).fill(0);
 
     const spendCategoryRows = spending.categories.map((cat) => {
       let catTotal = 0;
-      const dayCells = days.map((day, dIdx) => {
+      const dayCells = excelDays.map((day, dIdx) => {
         const key = `${cat.id}_${day.dateString}`;
         const amount = cellSumMap[key] || 0;
         catTotal += amount;

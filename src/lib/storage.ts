@@ -129,13 +129,21 @@ export function saveWellness(wellness: WellnessMap, userId?: string): void {
 const BASE_CYCLE_CONFIG_KEY = "habit_tracker_cycle_config_v1";
 
 export function loadCycleConfig(userId?: string): TrackerCycleConfig {
-  if (typeof window === "undefined") return { mode: "today_to_end" };
+  if (typeof window === "undefined") return { mode: "full_month" };
   const key = getScopedKey(BASE_CYCLE_CONFIG_KEY, userId);
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : { mode: "today_to_end" };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // If legacy "today_to_end" was set, migrate to "full_month" so yesterday & old data are NEVER hidden
+      if (parsed.mode === "today_to_end") {
+        return { mode: "full_month" };
+      }
+      return parsed;
+    }
+    return { mode: "full_month" };
   } catch {
-    return { mode: "today_to_end" };
+    return { mode: "full_month" };
   }
 }
 

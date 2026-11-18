@@ -30,6 +30,7 @@ import {
   writeToExcelFileHandle,
   downloadExcelFile,
   getStoredHandle,
+  requestFileHandlePermission,
   UnifiedSpendingData,
 } from "@/lib/excelStorage";
 import {
@@ -62,12 +63,14 @@ export default function Home() {
   // Local Excel File Storage State
   const [excelState, setExcelState] = useState<{
     isConnected: boolean;
+    needsPermission?: boolean;
     fileName: string | null;
     fileHandle: FileSystemFileHandle | null;
     lastSyncedAt: string | null;
     isSyncing: boolean;
   }>({
     isConnected: false,
+    needsPermission: false,
     fileName: null,
     fileHandle: null,
     lastSyncedAt: null,
@@ -75,8 +78,8 @@ export default function Home() {
   });
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
-  // Starting Day / Cycle State (Default to today_to_end)
-  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "today_to_end" });
+  // Starting Day / Cycle State (Default to full_month so yesterday & old data are NEVER hidden)
+  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "full_month" });
   const [customCycleStartDate, setCustomCycleStartDate] = useState<Date>(new Date());
   const [isStartingDayModalOpen, setIsStartingDayModalOpen] = useState(false);
 
@@ -100,7 +103,7 @@ export default function Home() {
     setHabitNotes(loadHabitNotes(userId));
     setWellness(loadWellness(userId));
 
-    // Load cycle configuration (defaults to today_to_end)
+    // Load cycle configuration (defaults to full_month)
     const savedCycle = loadCycleConfig(userId);
     if (savedCycle && savedCycle.mode) {
       setCycleConfig(savedCycle);
@@ -109,7 +112,7 @@ export default function Home() {
         setCustomCycleStartDate(new Date(y, m - 1, d));
       }
     } else {
-      setCycleConfig({ mode: "today_to_end" });
+      setCycleConfig({ mode: "full_month" });
     }
 
     // Check if an Excel File Handle was previously saved
@@ -121,9 +124,21 @@ export default function Home() {
           if (perm === "granted") {
             setExcelState({
               isConnected: true,
+              needsPermission: false,
               fileName: handle.name,
               fileHandle: handle,
               lastSyncedAt: new Date().toLocaleTimeString(),
+              isSyncing: false,
+            });
+            return;
+          } else {
+            // Browser restarted: handle exists but needs 1 user click to re-grant write permission
+            setExcelState({
+              isConnected: false,
+              needsPermission: true,
+              fileName: handle.name,
+              fileHandle: handle,
+              lastSyncedAt: null,
               isSyncing: false,
             });
             return;
@@ -175,28 +190,18 @@ export default function Home() {
   const isCustomCycle = cycleConfig.mode !== "full_month";
 
   const days = useMemo(() => {
-    const today = new Date();
-    const isViewingCurrentMonth =
-      today.getFullYear() === currentDate.getFullYear() &&
-      today.getMonth() === currentDate.getMonth();
-
     if (cycleConfig.mode === "consecutive_days") {
       return getDaysForCycle(customCycleStartDate, cycleConfig.durationDays || 30);
     }
 
-    if (cycleConfig.mode === "today_to_end") {
-      const startDay = isViewingCurrentMonth ? today.getDate() : 1;
-      return getDaysInMonth(year, month, startDay);
-    }
-
-    if (cycleConfig.mode === "custom_start_day") {
-      const startDay = cycleConfig.startDay || (isViewingCurrentMonth ? today.getDate() : 1);
-      return getDaysInMonth(year, month, startDay);
+    if (cycleConfig.mode === "custom_start_day" && cycleConfig.startDay) {
+      return getDaysInMonth(year, month, cycleConfig.startDay);
     }
 
     // Default: full_month (from day 1 to end of month)
+    // Ensures all days of the month (including yesterday and past data) are ALWAYS visible!
     return getDaysInMonth(year, month, 1);
-  }, [cycleConfig, customCycleStartDate, year, month, currentDate]);
+  }, [cycleConfig, customCycleStartDate, year, month]);
 
   const weeks = useMemo(() => groupDaysByWeek(days), [days]);
 
@@ -204,6 +209,49 @@ export default function Home() {
   const dateRangeLabel = useMemo(() => {
     return getKhmerDateRangeLabel(days);
   }, [days]);
+
+  // Re-grant permission for previously connected Excel file
+  const handleReAuthorizeExcel = async () => {
+    if (!excelState.fileHandle) {
+      setIsExcelModalOpen(true);
+      return;
+    }
+    try {
+      const granted = await requestFileHandlePermission(excelState.fileHandle);
+      if (granted) {
+        setExcelState((prev) => ({
+          ...prev,
+          isConnected: true,
+          needsPermission: false,
+          lastSyncedAt: new Date().toLocaleTimeString(),
+        }));
+        // Immediate sync to Excel
+        const spendingData: UnifiedSpendingData = {
+          categories: loadSpendingCategories(user?.id),
+          transactions: loadSpendingTransactions(user?.id),
+          budgetConfig: loadSpendingBudget(user?.id),
+        };
+        const currentTrades = loadTrades(user?.id);
+        await writeToExcelFileHandle(
+          excelState.fileHandle,
+          habits,
+          completions,
+          wellness,
+          days,
+          dateRangeLabel,
+          cycleConfig,
+          habitNotes,
+          spendingData,
+          currentTrades
+        );
+      } else {
+        setIsExcelModalOpen(true);
+      }
+    } catch (err) {
+      console.warn("Re-authorize failed", err);
+      setIsExcelModalOpen(true);
+    }
+  };
 
   // Auto-sync debounced to linked Local Excel File (.xlsx)
   useEffect(() => {
@@ -727,7 +775,10 @@ export default function Home() {
         dateRangeLabel={dateRangeLabel}
         isCustomCycle={isCustomCycle}
         onOpenStartingDayModal={() => setIsStartingDayModalOpen(true)}
-        excelStorageState={excelState}
+        excelStorageState={{
+          ...excelState,
+          onReAuthorize: handleReAuthorizeExcel,
+        }}
         onOpenExcelModal={() => setIsExcelModalOpen(true)}
         onExportExcel={handleExportExcel}
         theme={theme}
