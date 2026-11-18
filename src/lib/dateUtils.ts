@@ -1,4 +1,4 @@
-import { DayInfo } from "@/types/habit";
+import { DayInfo, TrackerCycleConfig } from "@/types/habit";
 
 export const KHMER_DAY_NAMES = ["អា", "ច", "អ", "ព", "ព្រ", "សុ", "ស"];
 
@@ -136,4 +136,65 @@ export function groupDaysByWeek(days: DayInfo[]): { weekNumber: number; days: Da
     weekNumber: Number(key),
     days: groups[Number(key)],
   }));
+}
+
+/**
+ * Calculates the array of days to display based on the user's cycle configuration and current viewed date.
+ *
+ * Rules:
+ * 1. "consecutive_days": durationDays from customCycleStartDate.
+ * 2. "full_month": 1 to end of current month.
+ * 3. "start_date_to_end" / "today_to_end" / "custom_start_day":
+ *    - In the starting month: displays from `startDay` (e.g. 18) to the end of that month (30).
+ *    - In next / future months: displays the full month (1 to end of month, e.g. Dec 1 to 31).
+ *    - In past months (when user clicks back to view previous months): displays the full month (1 to end of month) with all old data kept!
+ */
+export function getDaysForView(
+  currentDate: Date,
+  cycleConfig: TrackerCycleConfig,
+  customCycleStartDate?: Date
+): DayInfo[] {
+  const viewYear = currentDate.getFullYear();
+  const viewMonth = currentDate.getMonth();
+
+  if (cycleConfig.mode === "consecutive_days") {
+    return getDaysForCycle(customCycleStartDate || currentDate, cycleConfig.durationDays || 30);
+  }
+
+  if (cycleConfig.mode === "full_month") {
+    return getDaysInMonth(viewYear, viewMonth, 1);
+  }
+
+  // Parse start date (defaults to 2026-11-18 or today)
+  let startYear = new Date().getFullYear();
+  let startMonth = new Date().getMonth();
+  let startDay = 18;
+
+  if (cycleConfig.startDate) {
+    const parts = cycleConfig.startDate.split("-").map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      startYear = parts[0];
+      startMonth = parts[1] - 1;
+      startDay = parts[2];
+    }
+  } else if (cycleConfig.startDay) {
+    startDay = cycleConfig.startDay;
+  }
+
+  // 1. If viewing the exact starting month:
+  // Displays from startDay (e.g. 18) to the end of that month (e.g. 30).
+  // Notice: startDay is FIXED! It does NOT move to 19 tomorrow!
+  if (viewYear === startYear && viewMonth === startMonth) {
+    return getDaysInMonth(viewYear, viewMonth, startDay);
+  }
+
+  // 2. If viewing a future month (e.g. next month, December 2026):
+  // "then next month will show next month" -> full month from day 1 to end!
+  if (viewYear > startYear || (viewYear === startYear && viewMonth > startMonth)) {
+    return getDaysInMonth(viewYear, viewMonth, 1);
+  }
+
+  // 3. If viewing a past month (e.g. October 2026):
+  // "but keep old data if user click to view back month bro" -> full month so past data is shown!
+  return getDaysInMonth(viewYear, viewMonth, 1);
 }

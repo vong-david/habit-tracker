@@ -20,12 +20,12 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
   onSaveCycleConfig,
   currentDate,
 }) => {
-  const [mode, setMode] = useState<"today_to_end" | "custom_start_day" | "full_month" | "consecutive_days">(
-    cycleConfig.mode || "today_to_end"
+  const [mode, setMode] = useState<TrackerCycleConfig["mode"]>(
+    cycleConfig.mode || "start_date_to_end"
   );
 
   const [startDayInput, setStartDayInput] = useState<number>(
-    cycleConfig.startDay || 12
+    cycleConfig.startDay || 18
   );
 
   // Month information
@@ -37,7 +37,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const todayDate = new Date().getDate();
-      setMode(cycleConfig.mode || "today_to_end");
+      setMode(cycleConfig.mode || "start_date_to_end");
       setStartDayInput(cycleConfig.startDay || todayDate);
     }
   }, [isOpen]); // Fixed: removed `today` and `cycleConfig` from deps to prevent re-render resets!
@@ -52,15 +52,15 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
       return `បង្ហាញពេញមួយខែ៖ ពីថ្ងៃទី ១ ដល់ ថ្ងៃទី ${toKhmerNum(currentMonthDays)} ${currentMonthName} ${currentYearKhmer} (សរុប ${toKhmerNum(currentMonthDays)} ថ្ងៃ)`;
     }
 
-    if (mode === "today_to_end") {
+    if (mode === "today_to_end" || (mode === "start_date_to_end" && startDayInput === todayDate)) {
       const count = currentMonthDays - todayDate + 1;
-      return `បង្ហាញពីថ្ងៃនេះដល់ចុងខែ៖ ពីថ្ងៃទី ${toKhmerNum(todayDate)} ដល់ ${toKhmerNum(currentMonthDays)} ${currentMonthName} ${currentYearKhmer} (សរុប ${toKhmerNum(count)} ថ្ងៃ)`;
+      return `ខែនេះ៖ បង្ហាញចាប់ពីថ្ងៃទី ${toKhmerNum(todayDate)} ដល់ ${toKhmerNum(currentMonthDays)} ${currentMonthName} (សរុប ${toKhmerNum(count)} ថ្ងៃ)។ ខែបន្ទាប់នឹងបង្ហាញពេញមួយខែ (១ ដល់ ៣១) ដោយរក្សាទិន្នន័យចាស់ជានិច្ច!`;
     }
 
-    if (mode === "custom_start_day") {
+    if (mode === "custom_start_day" || mode === "start_date_to_end") {
       const validStart = Math.max(1, Math.min(startDayInput, currentMonthDays));
       const count = currentMonthDays - validStart + 1;
-      return `ចាប់ពីថ្ងៃទី ${toKhmerNum(validStart)} ដល់ ${toKhmerNum(currentMonthDays)} ${currentMonthName} ${currentYearKhmer} (សរុប ${toKhmerNum(count)} ថ្ងៃ)`;
+      return `ខែនេះ៖ បង្ហាញចាប់ពីថ្ងៃទី ${toKhmerNum(validStart)} ដល់ ${toKhmerNum(currentMonthDays)} ${currentMonthName} (សរុប ${toKhmerNum(count)} ថ្ងៃ)។ ខែបន្ទាប់នឹងបង្ហាញពេញមួយខែ (១ ដល់ ៣១) ដោយរក្សាទិន្នន័យចាស់ជានិច្ច!`;
     }
 
     if (mode === "consecutive_days") {
@@ -72,15 +72,19 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "today_to_end") {
+    if (mode === "today_to_end" || (mode === "start_date_to_end" && startDayInput === todayDate)) {
+      const today = new Date();
       onSaveCycleConfig({
-        mode: "today_to_end",
+        mode: "start_date_to_end",
+        startDate: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(todayDate).padStart(2, "0")}`,
         startDay: todayDate,
       });
-    } else if (mode === "custom_start_day") {
+    } else if (mode === "custom_start_day" || mode === "start_date_to_end") {
+      const validStart = Math.max(1, Math.min(startDayInput, currentMonthDays));
       onSaveCycleConfig({
-        mode: "custom_start_day",
-        startDay: Math.max(1, Math.min(startDayInput, currentMonthDays)),
+        mode: "start_date_to_end",
+        startDate: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(validStart).padStart(2, "0")}`,
+        startDay: validStart,
       });
     } else if (mode === "full_month") {
       onSaveCycleConfig({
@@ -136,9 +140,12 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
         <form onSubmit={handleSave} className="mt-5 space-y-4">
           {/* Option 1: Start From Today to End of Month */}
           <div
-            onClick={() => setMode("today_to_end")}
+            onClick={() => {
+              setMode("start_date_to_end");
+              setStartDayInput(todayDate);
+            }}
             className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
-              mode === "today_to_end"
+              mode === "today_to_end" || (mode === "start_date_to_end" && startDayInput === todayDate)
                 ? "bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-sm ring-1 ring-emerald-500/50"
                 : "bg-gray-50 dark:bg-[#1a1c28] border-gray-200 dark:border-gray-800 hover:border-emerald-500/40"
             }`}
@@ -146,12 +153,12 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
             {/* Custom Radio Circle */}
             <div
               className={`w-5 h-5 rounded-full border flex items-center justify-center mt-1 shrink-0 transition-colors ${
-                mode === "today_to_end"
+                mode === "today_to_end" || (mode === "start_date_to_end" && startDayInput === todayDate)
                   ? "border-emerald-500 bg-emerald-500 text-slate-950 font-bold"
                   : "border-gray-300 dark:border-gray-600 bg-transparent"
               }`}
             >
-              {mode === "today_to_end" && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+              {(mode === "today_to_end" || (mode === "start_date_to_end" && startDayInput === todayDate)) && <div className="w-2 h-2 rounded-full bg-slate-950" />}
             </div>
 
             <div className="flex-1">
@@ -162,10 +169,10 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
                     ណែនាំ
                   </span>
                 </p>
-                {mode === "today_to_end" && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
+                {(mode === "today_to_end" || (mode === "start_date_to_end" && startDayInput === todayDate)) && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                បង្ហាញចាប់ពី <strong>ថ្ងៃនេះ (ថ្ងៃទី {toKhmerNum(todayDate)})</strong> ដល់ថ្ងៃចុងខែ <strong>({toKhmerNum(currentMonthDays)} {currentMonthName})</strong>
+                ខែនេះបង្ហាញពី <strong>ថ្ងៃនេះ (ថ្ងៃទី {toKhmerNum(todayDate)})</strong> ដល់ចុងខែ។ ខែបន្ទាប់បង្ហាញពេញមួយខែ (១ ដល់ ៣១) ដោយរក្សាទិន្នន័យចាស់ជានិច្ច!
               </p>
             </div>
           </div>
@@ -174,7 +181,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
           <div
             onClick={() => setMode("custom_start_day")}
             className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-3 ${
-              mode === "custom_start_day"
+              mode === "custom_start_day" || (mode === "start_date_to_end" && startDayInput !== todayDate)
                 ? "bg-emerald-500/10 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-sm ring-1 ring-emerald-500/50"
                 : "bg-gray-50 dark:bg-[#1a1c28] border-gray-200 dark:border-gray-800 hover:border-emerald-500/40"
             }`}
@@ -183,12 +190,12 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
               {/* Custom Radio Circle */}
               <div
                 className={`w-5 h-5 rounded-full border flex items-center justify-center mt-1 shrink-0 transition-colors ${
-                  mode === "custom_start_day"
+                  mode === "custom_start_day" || (mode === "start_date_to_end" && startDayInput !== todayDate)
                     ? "border-emerald-500 bg-emerald-500 text-slate-950 font-bold"
                     : "border-gray-300 dark:border-gray-600 bg-transparent"
                 }`}
               >
-                {mode === "custom_start_day" && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+                {(mode === "custom_start_day" || (mode === "start_date_to_end" && startDayInput !== todayDate)) && <div className="w-2 h-2 rounded-full bg-slate-950" />}
               </div>
 
               <div className="flex-1">
@@ -196,10 +203,10 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
                   <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
                     កំណត់ថ្ងៃទីចាប់ផ្តើម (ឧ. ថ្ងៃទី ១២ ដល់ចុងខែ)
                   </p>
-                  {mode === "custom_start_day" && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
+                  {(mode === "custom_start_day" || (mode === "start_date_to_end" && startDayInput !== todayDate)) && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  ជ្រើសរើសថ្ងៃទីដែលអ្នកចង់ចាប់ផ្តើមរហូតដល់ថ្ងៃចុងខែ
+                  ជ្រើសរើសថ្ងៃទីដែលអ្នកចង់ចាប់ផ្តើមរហូតដល់ថ្ងៃចុងខែ (ខែបន្ទាប់នឹងបង្ហាញពេញមួយខែ)
                 </p>
               </div>
             </div>
@@ -231,7 +238,7 @@ export const StartingDayModal: React.FC<StartingDayModalProps> = ({
 
             {/* Quick Day Chips */}
             <div className="flex flex-wrap gap-1.5 pt-1 pl-8">
-              {[1, 5, 10, 12, 15, 20, todayDate].filter((v, i, a) => a.indexOf(v) === i).sort((a,b) => a-b).map((d) => (
+              {[1, 5, 10, 12, 15, 17, 18, 20, todayDate].filter((v, i, a) => a.indexOf(v) === i).sort((a,b) => a-b).map((d) => (
                 <button
                   type="button"
                   key={d}

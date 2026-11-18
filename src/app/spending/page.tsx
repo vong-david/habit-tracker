@@ -25,6 +25,7 @@ import {
 import {
   getDaysInMonth,
   getDaysForCycle,
+  getDaysForView,
   groupDaysByWeek,
   getKhmerMonthYear,
   getKhmerDateRangeLabel,
@@ -88,8 +89,12 @@ export default function SpendingPage() {
   });
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
-  // Cycle Configuration (Defaults to full_month so yesterday & old data are NEVER hidden)
-  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({ mode: "full_month" });
+  // Cycle Configuration (e.g. 18-11-2026 to end of month, then full next month)
+  const [cycleConfig, setCycleConfig] = useState<TrackerCycleConfig>({
+    mode: "start_date_to_end",
+    startDate: "2026-11-18",
+    startDay: 18,
+  });
   const [customCycleStartDate, setCustomCycleStartDate] = useState<Date>(new Date());
   const [isStartingDayModalOpen, setIsStartingDayModalOpen] = useState(false);
 
@@ -126,7 +131,7 @@ export default function SpendingPage() {
         setCustomCycleStartDate(new Date(y, m - 1, d));
       }
     } else {
-      setCycleConfig({ mode: "full_month" });
+      setCycleConfig({ mode: "start_date_to_end", startDate: "2026-11-18", startDay: 18 });
     }
 
     // Check saved Excel file handle (shared across Habits and Spending)
@@ -192,20 +197,13 @@ export default function SpendingPage() {
   const month = currentDate.getMonth();
   const isCustomCycle = cycleConfig.mode !== "full_month";
 
-  // Days in view (Defaults to full_month so yesterday & all past spending are ALWAYS visible)
+  // Days in view:
+  // - In start month: shows from startDay to end of month
+  // - In next/future months: shows full month (1 to end of month)
+  // - In past months: shows full month keeping all old data
   const days = useMemo(() => {
-    if (cycleConfig.mode === "consecutive_days") {
-      return getDaysForCycle(customCycleStartDate, cycleConfig.durationDays || 30);
-    }
-
-    if (cycleConfig.mode === "custom_start_day" && cycleConfig.startDay) {
-      return getDaysInMonth(year, month, cycleConfig.startDay);
-    }
-
-    // Default: full_month (from day 1 to end of month)
-    // Ensures all days of the month (including yesterday and past data) are ALWAYS visible!
-    return getDaysInMonth(year, month, 1);
-  }, [cycleConfig, customCycleStartDate, year, month]);
+    return getDaysForView(currentDate, cycleConfig, customCycleStartDate);
+  }, [currentDate, cycleConfig, customCycleStartDate]);
 
   const dateRangeLabel = useMemo(() => {
     return getKhmerDateRangeLabel(days);

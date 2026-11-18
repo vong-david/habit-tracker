@@ -32,8 +32,8 @@ export interface DayInfo {
 }
 
 export interface TrackerCycleConfig {
-  mode: "today_to_end" | "custom_start_day" | "full_month" | "consecutive_days";
-  startDay?: number; // e.g. 12 or 17 (starts on this day of month to end of month)
-  startDate?: string; // "YYYY-MM-DD"
+  mode: "start_date_to_end" | "today_to_end" | "custom_start_day" | "full_month" | "consecutive_days";
+  startDay?: number; // e.g. 18 (starts on this day of month to end of month)
+  startDate?: string; // "YYYY-MM-DD" e.g. "2026-11-18"
   durationDays?: number; // default 30 for consecutive_days mode
 }
